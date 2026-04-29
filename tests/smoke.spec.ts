@@ -1,4 +1,4 @@
-import { test, expect } from '@nuxt/test-utils/playwright'
+import { test, expect } from '@playwright/test'
 
 test('home page loads without error', async ({ page }) => {
   await page.goto('/')
