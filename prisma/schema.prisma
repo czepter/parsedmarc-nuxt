@@ -22,6 +22,8 @@ model Session {
   userId    Int
   expiresAt DateTime
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Inbox {
@@ -60,12 +62,14 @@ model AggregateReport {
   inbox     Inbox             @relation(fields: [inboxId], references: [id])
   rawXml    String
   records   AggregateRecord[]
+
+  @@index([domainId, dateBegin])
 }
 
 model AggregateRecord {
-  id            String           @id @default(cuid())
+  id            String          @id @default(cuid())
   reportId      String
-  report        AggregateReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  report        AggregateReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   sourceIp      String
   count         Int
   disposition   String
@@ -73,7 +77,9 @@ model AggregateRecord {
   spf           String
   headerFrom    String
   geoLocationId String?
-  geoLocation   GeoLocation?     @relation(fields: [geoLocationId], references: [id])
+  geoLocation   GeoLocation?    @relation(fields: [geoLocationId], references: [id])
+
+  @@index([reportId])
 }
 
 model ForensicReport {
@@ -86,6 +92,9 @@ model ForensicReport {
   rawEml      String
   inboxId     String
   inbox       Inbox    @relation(fields: [inboxId], references: [id])
+
+  @@index([domainId])
+  @@index([inboxId])
 }
 
 model GeoLocation {
@@ -95,7 +104,7 @@ model GeoLocation {
   city             String?
   latitude         Float?
   longitude        Float?
-  lookedUpAt       DateTime
+  lookedUpAt       DateTime          @default(now())
   aggregateRecords AggregateRecord[]
 }
 
@@ -108,4 +117,6 @@ model ScanRun {
   messagesSeen  Int       @default(0)
   reportsParsed Int       @default(0)
   errorMessage  String?
+
+  @@index([inboxId])
 }
