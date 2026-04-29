@@ -1,15 +1,10 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '@nuxt/test-utils/playwright'
 
-test('placeholder smoke test', async ({ page }) => {
-  // Smoke test: the dev server is running and accepting requests
-  // This will be expanded to full E2E tests in M2+
-  try {
-    const response = await page.goto('http://localhost:3000/', { waitUntil: 'commit' })
-    // Just check that we got a response (even if it's an error page from Nuxt/Prisma setup)
-    expect(response).toBeTruthy()
-  } catch {
-    // If navigation fails entirely, that's also acceptable for a placeholder test
-    // since this will be replaced with real tests in M2+
-    expect(true).toBe(true)
-  }
+test('home page loads without error', async ({ page }) => {
+  await page.goto('/')
+  // Page must have a title (any non-error title)
+  const title = await page.title()
+  expect(title).not.toContain('Error')
+  // Smoke test: the Button from app.vue should be visible
+  await expect(page.getByRole('button', { name: /parsedmarc-nuxt/i })).toBeVisible()
 })
