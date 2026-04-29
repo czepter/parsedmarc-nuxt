@@ -1,0 +1,111 @@
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    Int
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Inbox {
+  id                String            @id @default(cuid())
+  label             String
+  host              String
+  port              Int               @default(993)
+  tls               Boolean           @default(true)
+  username          String
+  passwordEncrypted String
+  processedFolder   String?
+  enabled           Boolean           @default(true)
+  pollCron          String            @default("*/15 * * * *")
+  aggregateReports  AggregateReport[]
+  forensicReports   ForensicReport[]
+  scanRuns          ScanRun[]
+}
+
+model Domain {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  addedAt          DateTime          @default(now())
+  aggregateReports AggregateReport[]
+  forensicReports  ForensicReport[]
+}
+
+model AggregateReport {
+  id        String            @id @default(cuid())
+  reportId  String            @unique
+  orgName   String
+  domainId  String
+  domain    Domain            @relation(fields: [domainId], references: [id])
+  dateBegin DateTime
+  dateEnd   DateTime
+  inboxId   String
+  inbox     Inbox             @relation(fields: [inboxId], references: [id])
+  rawXml    String
+  records   AggregateRecord[]
+}
+
+model AggregateRecord {
+  id            String           @id @default(cuid())
+  reportId      String
+  report        AggregateReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sourceIp      String
+  count         Int
+  disposition   String
+  dkim          String
+  spf           String
+  headerFrom    String
+  geoLocationId String?
+  geoLocation   GeoLocation?     @relation(fields: [geoLocationId], references: [id])
+}
+
+model ForensicReport {
+  id          String   @id @default(cuid())
+  domainId    String
+  domain      Domain   @relation(fields: [domainId], references: [id])
+  arrivalDate DateTime
+  sourceIp    String
+  subject     String
+  rawEml      String
+  inboxId     String
+  inbox       Inbox    @relation(fields: [inboxId], references: [id])
+}
+
+model GeoLocation {
+  id               String            @id @default(cuid())
+  ip               String            @unique
+  country          String?
+  city             String?
+  latitude         Float?
+  longitude        Float?
+  lookedUpAt       DateTime
+  aggregateRecords AggregateRecord[]
+}
+
+model ScanRun {
+  id            String    @id @default(cuid())
+  inboxId       String
+  inbox         Inbox     @relation(fields: [inboxId], references: [id])
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  messagesSeen  Int       @default(0)
+  reportsParsed Int       @default(0)
+  errorMessage  String?
+}
