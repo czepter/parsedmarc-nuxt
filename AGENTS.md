@@ -264,7 +264,7 @@ Owner of all items below: the first implementation PR(s).
 - [ ] IMAP fetcher (`lib/imap/`)
 - [ ] Aggregate report parser (`lib/dmarc/aggregate.ts`)
 - [ ] Forensic report parser (`lib/dmarc/forensic.ts`)
-- [ ] Inbox admin UI (`app/pages/inboxes/`)
+- [x] Inbox admin UI (`app/pages/inboxes/`)
 - [ ] Dashboard (summary tiles + hero chart + records table)
 - [ ] Domain detail view
 - [ ] Dark mode

@@ -104,14 +104,14 @@
 
 **Exit criteria**
 
-- [ ] `app/server/utils/encryption.ts` provides `encrypt(text)` / `decrypt(cipher)` using AES-256-GCM with a key derived from `NUXT_SESSION_PASSWORD`
-- [ ] `POST /api/inboxes` validates input (Zod), tests connection via `imapflow`, encrypts password, creates row
-- [ ] `PUT /api/inboxes/[id]` mirrors POST; empty password leaves existing unchanged
-- [ ] `DELETE /api/inboxes/[id]` cascades to owned reports, records, runs
-- [ ] `/inboxes` list page (PRD J4.R1)
-- [ ] `/inboxes/new` and `/inboxes/[id]/edit` pages (PRD J1.R3, J4.R2)
-- [ ] "Scan now" button calls `POST /api/inboxes/[id]/scan` (PRD J4.R3)
-- [ ] `/inboxes/[id]/runs` shows ScanRun history (PRD J4.R4)
+- [x] `app/server/utils/encryption.ts` provides `encrypt(text)` / `decrypt(cipher)` using AES-256-GCM with a key derived from `NUXT_SESSION_PASSWORD`
+- [x] `POST /api/inboxes` validates input (Zod), tests connection via `imapflow`, encrypts password, creates row
+- [x] `PUT /api/inboxes/[id]` mirrors POST; empty password leaves existing unchanged
+- [x] `DELETE /api/inboxes/[id]` cascades to owned reports, records, runs
+- [x] `/inboxes` list page (PRD J4.R1)
+- [x] `/inboxes/new` and `/inboxes/[id]/edit` pages (PRD J1.R3, J4.R2)
+- [x] "Scan now" button calls `POST /api/inboxes/[id]/scan` (PRD J4.R3)
+- [x] `/inboxes/[id]/runs` shows ScanRun history (PRD J4.R4)
 
 **Satisfies.** PRD J1.R3, J4.R1–R4, NFR-S2, NFR-S6.
 
