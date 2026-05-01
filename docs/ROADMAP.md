@@ -27,7 +27,7 @@
 - [x] `docs/VISION.md` written
 - [x] `docs/PRD.md` written
 - [x] `docs/ROADMAP.md` written (this file)
-- [ ] `README.md` rewritten as a quickstart that points at the four docs above
+- [x] `README.md` rewritten as a quickstart that points at the four docs above
 
 **Satisfies.** Setup readability for every future contributor (PRD NFR-D1).
 
@@ -185,10 +185,10 @@
 
 **Exit criteria**
 
-- [ ] `/settings` page with MMDB status panel (PRD J5.R1)
-- [ ] "Refresh GeoIP now" button triggers downloader
-- [ ] Password change form (current + new + confirm)
-- [ ] "Download SQLite snapshot" link uses `BACKUP TO`, names file `parsedmarc-YYYY-MM-DD.db` (PRD J5.R2)
+- [x] `/settings` page with MMDB status panel (PRD J5.R1)
+- [x] "Refresh GeoIP now" button triggers downloader
+- [x] Password change form (current + new + confirm)
+- [x] "Download SQLite snapshot" link uses `BACKUP TO`, names file `parsedmarc-YYYY-MM-DD.db` (PRD J5.R2)
 
 **Satisfies.** PRD J5.R1, J5.R2.
 

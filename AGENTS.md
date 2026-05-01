@@ -267,6 +267,7 @@ Owner of all items below: the first implementation PR(s).
 - [x] Inbox admin UI (`app/pages/inboxes/`)
 - [x] Dashboard (summary tiles + hero chart + records table)
 - [x] Domain detail view
+- [x] Settings page (GeoIP status, password change, database backup)
 - [ ] Dark mode
 - [ ] Dockerfile + compose example
 - [ ] CI (lint, typecheck, test)
