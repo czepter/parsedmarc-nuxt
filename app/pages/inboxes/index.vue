@@ -1,12 +1,12 @@
 <script setup lang="ts">
 const { data: inboxes, refresh, status, error } = await useFetch('/api/inboxes')
 
-const scanningId = ref<string | null>(null)
+const scanningIds = ref(new Set<string>())
 const deletingId = ref<string | null>(null)
 
 async function scanNow(id: string) {
-  if (scanningId.value === id) return
-  scanningId.value = id
+  if (scanningIds.value.has(id)) return
+  scanningIds.value.add(id)
   try {
     await $fetch(`/api/inboxes/${id}/scan`, { method: 'POST' })
     await refresh()
@@ -15,7 +15,7 @@ async function scanNow(id: string) {
     alert(`Scan failed: ${(e as { statusMessage?: string }).statusMessage ?? 'Unknown error'}`)
   }
   finally {
-    scanningId.value = null
+    scanningIds.value.delete(id)
   }
 }
 
@@ -83,10 +83,10 @@ async function deleteInbox(id: string, label: string) {
             <Button
               variant="outline"
               size="sm"
-              :disabled="scanningId === inbox.id"
+              :disabled="scanningIds.has(inbox.id)"
               @click="scanNow(inbox.id)"
             >
-              {{ scanningId === inbox.id ? 'Scanning…' : 'Scan Now' }}
+              {{ scanningIds.has(inbox.id) ? 'Scanning…' : 'Scan Now' }}
             </Button>
             <Button
               variant="destructive"
