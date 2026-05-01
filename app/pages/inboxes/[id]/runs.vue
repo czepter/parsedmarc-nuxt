@@ -28,6 +28,9 @@ function duration(start: string, end: string | null | undefined): string {
     <div v-if="status === 'error'" class="text-destructive rounded-md border p-12 text-center text-sm">
       Failed to load runs: {{ error?.message }}
     </div>
+    <div v-else-if="status === 'pending'" class="text-muted-foreground rounded-md border p-12 text-center text-sm">
+      Loading…
+    </div>
     <div v-else-if="status === 'success' && !runs?.length" class="text-muted-foreground rounded-md border p-12 text-center text-sm">
       No scan runs recorded yet.
     </div>
