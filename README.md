@@ -1,75 +1,99 @@
-# Nuxt Minimal Starter
+# parsedmarc-nuxt
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A lightweight, self-hosted DMARC report dashboard. Parses aggregate and forensic reports delivered to an IMAP mailbox, enriches source IPs with GeoIP data, and presents everything in a clean web interface.
 
-## Setup
+---
 
-Make sure to install dependencies:
+## Quickstart
+
+### Requirements
+
+- Node.js 20+
+- pnpm 9+
+- An IMAP mailbox that receives DMARC reports
+
+### 1. Clone and install
 
 ```bash
-# npm
-npm install
-
-# pnpm
+git clone https://github.com/your-org/parsedmarc-nuxt.git
+cd parsedmarc-nuxt
 pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+### 2. Configure environment
 
 ```bash
-# npm
-npm run dev
+cp .env.example .env
+```
 
-# pnpm
+Edit `.env` — at minimum set:
+
+| Variable | Required | Description |
+|---|---|---|
+| `NUXT_SESSION_PASSWORD` | ✅ | 32+ character secret for session cookies and credential encryption |
+| `NUXT_MAXMIND_LICENSE_KEY` | Recommended | Free MaxMind account key for GeoIP enrichment |
+| `DATABASE_URL` | Optional | SQLite path (default: `file:./data/parsedmarc.db`) |
+
+### 3. Run database migrations
+
+```bash
+pnpm exec prisma migrate deploy
+```
+
+### 4. Start the dev server
+
+```bash
 pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+Open [http://localhost:3000](http://localhost:3000). You will be redirected to `/setup` to create the first operator account.
 
-Build the application for production:
+### 5. Production build
 
 ```bash
-# npm
-npm run build
-
-# pnpm
 pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+node .output/server/index.mjs
 ```
 
-Locally preview production build:
+---
+
+## Adding an IMAP inbox
+
+1. Log in and navigate to **Inboxes → Add inbox**.
+2. Enter your IMAP server details. The form tests the connection before saving.
+3. Enable the inbox and set a poll schedule (default: every 15 minutes).
+4. Click **Scan now** to ingest reports immediately without waiting for the scheduler.
+
+---
+
+## Project documentation
+
+| Document | Purpose |
+|---|---|
+| [`docs/VISION.md`](docs/VISION.md) | Who this is for and why it exists |
+| [`docs/PRD.md`](docs/PRD.md) | Full feature requirements and acceptance criteria |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Milestone-based delivery plan |
+| [`AGENTS.md`](AGENTS.md) | Coding conventions, architecture decisions, implementation contract |
+
+---
+
+## Development
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+pnpm dev          # dev server with hot reload
+pnpm test         # unit tests (Vitest)
+pnpm test:e2e     # end-to-end tests (Playwright)
+pnpm exec tsc --noEmit  # TypeScript check
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Test fixtures live in `test/fixtures/dmarc/`. Seed 100k records for dashboard performance testing:
+
+```bash
+pnpm tsx scripts/seed-dashboard.ts
+```
+
+---
+
+## License
+
+MIT
