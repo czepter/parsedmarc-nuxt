@@ -36,10 +36,12 @@ export default defineEventHandler(async (event): Promise<DomainDetailResponse> =
   })
 
   if (!domain) {
-    throw createError({ statusCode: 404, statusMessage: `Domain not found: ${domainName}` })
+    throw createError({ statusCode: 404, statusMessage: 'Domain not found' })
   }
 
-  // Aggregate record stats grouped by IP + disposition
+  // Aggregate record stats grouped by IP + disposition.
+  // Cap at 500 rows to bound memory — enough to find the top-10 IPs accurately
+  // for all but the most extreme domains (thousands of distinct sending IPs).
   const ipGroups = await prisma.aggregateRecord.groupBy({
     by: ['sourceIp', 'disposition'],
     where: {
@@ -47,6 +49,7 @@ export default defineEventHandler(async (event): Promise<DomainDetailResponse> =
     },
     _sum: { count: true },
     orderBy: { _sum: { count: 'desc' } },
+    take: 500,
   })
 
   // Collapse per-IP-per-disposition into per-IP totals

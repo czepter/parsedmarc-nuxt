@@ -62,7 +62,7 @@ export default defineEventHandler(async (event): Promise<IpDetailResponse> => {
   })
 
   if (dispositionGroups.length === 0 && !geo) {
-    throw createError({ statusCode: 404, statusMessage: `No data found for IP: ${ip}` })
+    throw createError({ statusCode: 404, statusMessage: 'IP not found' })
   }
 
   const totalMessages = dispositionGroups.reduce((acc, g) => acc + (g._sum.count ?? 0), 0)
