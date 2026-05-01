@@ -58,12 +58,15 @@ async function computeTiles(fromMs: number, toMs: number): Promise<TileData> {
   })
 
   // 4. Top country via GeoLocation join — use $queryRaw for the join aggregation
+  // Prisma stores DateTime as ISO text in SQLite — compare with ISO strings, not unix ms.
+  const fromIso = new Date(fromMs).toISOString()
+  const toIso = new Date(toMs).toISOString()
   const countryRows = await prisma.$queryRaw<Array<{ country: string | null; total: number }>>`
     SELECT gl.country, SUM(ar.count) as total
     FROM AggregateRecord ar
     JOIN AggregateReport rep ON rep.id = ar.reportId
     LEFT JOIN GeoLocation gl ON gl.id = ar.geoLocationId
-    WHERE rep.dateBegin >= ${fromMs} AND rep.dateBegin < ${toMs}
+    WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
     GROUP BY gl.country
     ORDER BY total DESC
     LIMIT 1

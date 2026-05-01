@@ -57,14 +57,19 @@ export default defineEventHandler(async (event): Promise<TimeseriesResponse> => 
   const fromMs = fromSeconds * 1000
   const toMs = toSeconds * 1000
 
+  // Prisma stores DateTime as ISO text in SQLite — compare with ISO strings, not unix ms.
+  // strftime() accepts ISO text directly (no /1000 conversion needed).
+  const fromIso = new Date(fromMs).toISOString()
+  const toIso = new Date(toMs).toISOString()
+
   const rows = await prisma.$queryRaw<BucketRow[]>`
     SELECT
-      strftime(${fmt}, datetime(rep.dateBegin / 1000, 'unixepoch')) AS bucket,
+      strftime(${fmt}, rep.dateBegin) AS bucket,
       ar.disposition,
       CAST(SUM(ar.count) AS INTEGER) AS total
     FROM AggregateRecord ar
     JOIN AggregateReport rep ON rep.id = ar.reportId
-    WHERE rep.dateBegin >= ${fromMs} AND rep.dateBegin < ${toMs}
+    WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
     GROUP BY bucket, ar.disposition
     ORDER BY bucket ASC
   `
