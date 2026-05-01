@@ -18,7 +18,7 @@
 **Mission**
 - Turn a folder of DMARC reports (delivered by IMAP) into a beautiful, queryable dashboard
 - Aggregate-report parsing, forensic-report parsing, GeoIP enrichment, multi-inbox ingestion
-- One-binary deployment story: Node + a single SQLite file + a single MaxMind MMDB
+- One-binary deployment story: Node + a single SQLite file + MaxMind GeoLite2 web service
 - Admin shell for managing many IMAP inboxes per deployment
 
 **Non-Goals**
@@ -40,8 +40,7 @@
 | IMAP client | `imapflow` | Modern, promise-based, actively maintained | to add |
 | Email parsing | `mailparser` | Battle-tested MIME parser, returns clean attachments | to add |
 | DMARC XML | `fast-xml-parser` | Fastest pure-JS XML parser, no node-gyp | to add |
-| GeoIP reader | `maxmind` (npm) | Reads GeoLite2-City.mmdb in-process | to add |
-| GeoIP DB | GeoLite2-City.mmdb | Downloaded at server start, refreshed monthly via croner | runtime artifact |
+| GeoIP client | `@maxmind/geoip2-node` | Calls MaxMind GeoLite2 web service (`geolite.info`) at ingestion time | installed |
 | Job scheduling | `croner` | One-file in-process cron, no Redis/queue infra | to add |
 | Charts | `uPlot` | Canvas, ~40 KB, smooth at 100K+ points | to add |
 | UI primitives | `shadcn-nuxt` | Composable, themeable, matches Umami aesthetic | installed |
@@ -65,7 +64,7 @@ parsedmarc-nuxt/
 │   ├── server/
 │   │   ├── api/                     # REST-ish endpoints, e.g. inboxes/[id].get.ts
 │   │   ├── plugins/                 # Nitro plugins:
-│   │   │                            #   geoip-bootstrap.ts (downloads MMDB on start)
+│   │   │                            #   geoip-bootstrap.ts (constructs WebServiceClient singleton)
 │   │   │                            #   scheduler.ts       (registers croner jobs)
 │   │   └── utils/                   # Server-only helpers (auth, db, geoip lookups)
 │   └── generated/prisma/            # Prisma client output (gitignored)
@@ -73,13 +72,12 @@ parsedmarc-nuxt/
 │   ├── prisma.ts                    # PrismaClient singleton (already exists)
 │   ├── dmarc/                       # Aggregate + forensic report parsers
 │   ├── imap/                        # imapflow wrapper, attachment dispatcher
-│   └── geoip/                       # maxmind reader, MMDB downloader
+│   └── geoip/                       # MaxMind GeoLite2 web service client, lookup cache
 ├── prisma/
 │   ├── schema.prisma                # Models live here (see section 5)
 │   └── migrations/
 ├── data/                            # Runtime artifacts — must be gitignored
-│   ├── parsedmarc.db                # SQLite database
-│   └── GeoLite2-City.mmdb           # Downloaded at server start
+│   └── parsedmarc.db                # SQLite database
 ├── test/                            # Vitest tests (per vitest.config.ts projects)
 │   ├── unit/                        # `unit` project (node env)
 │   ├── nuxt/                        # `nuxt` project (happy-dom + Nuxt context)
@@ -158,15 +156,15 @@ A fresh clone is `pnpm install && pnpm exec prisma migrate dev && pnpm dev`.
 - Read configuration via `useRuntimeConfig()` (server) or `useRuntimeConfig().public` (client). Define everything in `nuxt.config.ts` `runtimeConfig`. **No** `process.env.X` reads outside that file.
 - Throw API errors via `createError({ statusCode, statusMessage })`. Never `throw new Error()` inside an event handler.
 - Vitest tests live under `test/unit/` (node env) or `test/nuxt/` (Nuxt env), per the `vitest.config.ts` project split. Playwright e2e tests live in `tests/` (per `playwright.config.ts` `testDir`).
-- All recurring or long-running work (IMAP poll, MMDB refresh) goes through `app/server/plugins/scheduler.ts` registered croner jobs — never `setInterval` in module scope.
+- All recurring or long-running work (IMAP poll) goes through `app/server/plugins/scheduler.ts` registered croner jobs — never `setInterval` in module scope.
 - Encrypt IMAP passwords at rest. Use a key derived from `NUXT_SESSION_PASSWORD` (or a separate `NUXT_ENCRYPTION_KEY`) and store ciphertext in `Inbox.passwordEncrypted`.
 
 **Never**
 - Add Python or any non-Node runtime to the deployment story.
-- Commit anything under `data/` (SQLite file, MMDB) — `.gitignore` must cover it.
+- Commit anything under `data/` (SQLite file) — `.gitignore` must cover it.
 - Hard-code `orgId` assumptions outside the auth/session layer (see section 5).
 - Bypass `lib/dmarc/` to do ad-hoc XML parsing in a route handler.
-- Fetch GeoIP data per-record from MaxMind's web API at request time. Always go through the local MMDB via `lib/geoip/`.
+- Call `WebServiceClient` directly from a route handler or page. GeoIP web service calls happen at ingestion time only, through `lib/geoip/lookup.ts`. Each IP is queried at most once across the deployment lifetime; results (including `AddressNotFoundError` negatives) are cached indefinitely in the `GeoLocation` table. Render paths read only from the cache via `lookupIp`.
 - Log raw IMAP credentials, session tokens, or full email bodies at info/debug level.
 
 ## 8. Domain Primer: DMARC in 90 Seconds
@@ -180,7 +178,7 @@ Two report types arrive in the mailboxes you'll point us at:
 
 **Alignment** is the DMARC-specific concept on top of SPF/DKIM: a passing SPF or DKIM check only counts toward DMARC if the authenticated domain *aligns with* the `From:` header domain (strict = exact match, relaxed = same organizational domain).
 
-**Why GeoIP matters**: every `<record>` carries a `source_ip`. Mapping IP → country/city is what turns "12,000 failed messages" into "12,000 failed messages from one IP block in Lagos" — actionable. We cache lookups in the `GeoLocation` table to avoid re-reading the MMDB on every render.
+**Why GeoIP matters**: every `<record>` carries a `source_ip`. Mapping IP → country/city is what turns "12,000 failed messages" into "12,000 failed messages from one IP block in Lagos" — actionable. We cache lookups in the `GeoLocation` table so each IP triggers at most one MaxMind web service call.
 
 External references:
 - [RFC 7489 (DMARC)](https://datatracker.ietf.org/doc/html/rfc7489)
@@ -215,7 +213,7 @@ croner tick (per-Inbox cron expression, default */15 * * * *)
 
 Each `Inbox` row carries its own `pollCron` so different mailboxes can have different cadences.
 
-The MMDB downloader is its own croner job (`0 4 1 * *` — 04:00 on the 1st of each month) plus a one-shot bootstrap call from `app/server/plugins/geoip-bootstrap.ts` at server start.
+GeoIP enrichment is performed via the MaxMind GeoLite2 web service through `lib/geoip/lookup.ts`; results (positive and `AddressNotFoundError` negatives) are cached indefinitely in the `GeoLocation` table. The `app/server/plugins/geoip-bootstrap.ts` plugin constructs the `WebServiceClient` singleton at server start.
 
 ## 10. Look & Feel Targets
 
@@ -239,9 +237,9 @@ Owner of all items below: the first implementation PR(s).
 1. **Tailwind**: add `tailwindcss`, `@tailwindcss/vite` (or `@nuxtjs/tailwindcss` module), `tailwindcss-animate` to `package.json`. Run `pnpm dlx shadcn-nuxt init`. Without this, no shadcn component will render styled.
 2. **Locked-in deps to install**: `imapflow`, `mailparser`, `fast-xml-parser`, `maxmind`, `nuxt-auth-utils`, `croner`, `uplot`, `better-sqlite3`. Add types where not bundled (`@types/mailparser`).
 3. **Real Prisma schema**: replace `User` / `Post` boilerplate in `prisma/schema.prisma` with the models from section 5. Run `pnpm exec prisma migrate dev --name init`.
-4. **`.env.example`**: ship with `MAXMIND_LICENSE_KEY=`, `NUXT_SESSION_PASSWORD=` (32+ chars, required by nuxt-auth-utils), `DATABASE_URL=file:./data/parsedmarc.db`.
-5. **GeoIP bootstrap plugin**: write `app/server/plugins/geoip-bootstrap.ts` that checks for `data/GeoLite2-City.mmdb`, downloads if missing or older than 35 days, and caches the `Reader`.
-6. **Scheduler plugin**: write `app/server/plugins/scheduler.ts` that loads enabled inboxes and registers a croner job per inbox + one MMDB-refresh job.
+4. **`.env.example`**: ship with `NUXT_MAXMIND_ACCOUNT_ID=`, `NUXT_MAXMIND_LICENSE_KEY=`, `NUXT_SESSION_PASSWORD=` (32+ chars, required by nuxt-auth-utils), `DATABASE_URL=file:./data/parsedmarc.db`.
+5. **GeoIP bootstrap plugin**: write `app/server/plugins/geoip-bootstrap.ts` that constructs the `WebServiceClient` singleton using `NUXT_MAXMIND_ACCOUNT_ID` and `NUXT_MAXMIND_LICENSE_KEY`.
+6. **Scheduler plugin**: write `app/server/plugins/scheduler.ts` that loads enabled inboxes and registers a croner job per inbox.
 7. **`.gitignore`**: add `data/` (currently absent — runtime artifacts will leak into commits otherwise).
 8. **`runtimeConfig`**: declare every secret in `nuxt.config.ts` so `useRuntimeConfig()` is the only access path.
 
