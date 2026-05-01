@@ -23,6 +23,7 @@
     "@pinia/nuxt": "0.11.3",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@tanstack/vue-table": "^8.21.3",
     "@vueuse/core": "^14.3.0",
     "better-sqlite3": "^12.9.0",
     "class-variance-authority": "^0.7.1",
@@ -43,7 +44,8 @@
     "tar": "^7.5.13",
     "uplot": "^1.6.32",
     "vue": "^3.5.33",
-    "vue-router": "^5.0.6"
+    "vue-router": "^5.0.6",
+    "zod": "^4.4.1"
   },
   "devDependencies": {
     "@nuxt/test-utils": "^4.0.3",

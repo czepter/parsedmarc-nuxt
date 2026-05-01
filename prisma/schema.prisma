@@ -59,7 +59,7 @@ model AggregateReport {
   dateBegin DateTime
   dateEnd   DateTime
   inboxId   String
-  inbox     Inbox             @relation(fields: [inboxId], references: [id])
+  inbox     Inbox             @relation(fields: [inboxId], references: [id], onDelete: Cascade)
   rawXml    String
   records   AggregateRecord[]
 
@@ -91,7 +91,7 @@ model ForensicReport {
   subject     String
   rawEml      String
   inboxId     String
-  inbox       Inbox    @relation(fields: [inboxId], references: [id])
+  inbox       Inbox    @relation(fields: [inboxId], references: [id], onDelete: Cascade)
 
   @@index([domainId])
   @@index([inboxId])
@@ -111,7 +111,7 @@ model GeoLocation {
 model ScanRun {
   id            String    @id @default(cuid())
   inboxId       String
-  inbox         Inbox     @relation(fields: [inboxId], references: [id])
+  inbox         Inbox     @relation(fields: [inboxId], references: [id], onDelete: Cascade)
   startedAt     DateTime  @default(now())
   finishedAt    DateTime?
   messagesSeen  Int       @default(0)
