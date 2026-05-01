@@ -235,7 +235,7 @@ See [`docs/VISION.md`](docs/VISION.md) for the longer aesthetic argument.
 Owner of all items below: the first implementation PR(s).
 
 1. **Tailwind**: add `tailwindcss`, `@tailwindcss/vite` (or `@nuxtjs/tailwindcss` module), `tailwindcss-animate` to `package.json`. Run `pnpm dlx shadcn-nuxt init`. Without this, no shadcn component will render styled.
-2. **Locked-in deps to install**: `imapflow`, `mailparser`, `fast-xml-parser`, `maxmind`, `nuxt-auth-utils`, `croner`, `uplot`, `better-sqlite3`. Add types where not bundled (`@types/mailparser`).
+2. **Locked-in deps to install**: `imapflow`, `mailparser`, `fast-xml-parser`, `@maxmind/geoip2-node`, `nuxt-auth-utils`, `croner`, `uplot`, `better-sqlite3`. Add types where not bundled (`@types/mailparser`).
 3. **Real Prisma schema**: replace `User` / `Post` boilerplate in `prisma/schema.prisma` with the models from section 5. Run `pnpm exec prisma migrate dev --name init`.
 4. **`.env.example`**: ship with `NUXT_MAXMIND_ACCOUNT_ID=`, `NUXT_MAXMIND_LICENSE_KEY=`, `NUXT_SESSION_PASSWORD=` (32+ chars, required by nuxt-auth-utils), `DATABASE_URL=file:./data/parsedmarc.db`.
 5. **GeoIP bootstrap plugin**: write `app/server/plugins/geoip-bootstrap.ts` that constructs the `WebServiceClient` singleton using `NUXT_MAXMIND_ACCOUNT_ID` and `NUXT_MAXMIND_LICENSE_KEY`.
