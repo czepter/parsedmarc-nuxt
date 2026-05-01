@@ -28,10 +28,11 @@ interface DomainDetailResponse {
 }
 
 const route = useRoute()
-const encodedName = route.params.name as string
+// route.params.name is already decoded by Vue Router — re-encode for the API URL
+const domainName = route.params.name as string
 
 const { data, status, error } = await useFetch<DomainDetailResponse>(
-  `/api/domains/${encodedName}`,
+  `/api/domains/${encodeURIComponent(domainName)}`,
 )
 
 function passRateClass(rate: number): string {

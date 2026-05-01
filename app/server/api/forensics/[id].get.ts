@@ -7,7 +7,8 @@ interface ForensicDetailResponse {
   sourceIp: string
   subject: string
   rawEml: string
-  containsPii: true       // always true — forensic reports always have original headers
+  // Note: all forensic reports contain PII (original email headers) — the page always shows
+  // the PII badge. A future scrubbing feature can add a boolean field here.
 }
 
 export default defineEventHandler(async (event): Promise<ForensicDetailResponse> => {
@@ -36,6 +37,5 @@ export default defineEventHandler(async (event): Promise<ForensicDetailResponse>
     sourceIp: report.sourceIp,
     subject: report.subject,
     rawEml: report.rawEml,
-    containsPii: true,
   }
 })

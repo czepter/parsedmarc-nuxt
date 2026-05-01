@@ -8,7 +8,6 @@ interface ForensicDetailResponse {
   sourceIp: string
   subject: string
   rawEml: string
-  containsPii: true
 }
 
 const route = useRoute()

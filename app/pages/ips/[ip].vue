@@ -41,9 +41,10 @@ interface IpDetailResponse {
 }
 
 const route = useRoute()
+// route.params.ip is already decoded by Vue Router — re-encode for the API URL
 const ip = route.params.ip as string
 
-const { data, status, error } = await useFetch<IpDetailResponse>(`/api/ips/${ip}`)
+const { data, status, error } = await useFetch<IpDetailResponse>(`/api/ips/${encodeURIComponent(ip)}`)
 
 const DISPOSITION_COLORS: Record<string, string> = {
   none: 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',

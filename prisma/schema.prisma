@@ -80,6 +80,7 @@ model AggregateRecord {
   geoLocation   GeoLocation?    @relation(fields: [geoLocationId], references: [id])
 
   @@index([reportId])
+  @@index([sourceIp])
 }
 
 model ForensicReport {
