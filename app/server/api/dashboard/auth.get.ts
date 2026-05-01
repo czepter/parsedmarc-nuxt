@@ -35,9 +35,9 @@ export default defineEventHandler(async (event): Promise<AuthResponse> => {
   >`
     SELECT
       CAST(SUM(CASE WHEN ar.dkim = 'pass' THEN ar.count ELSE 0 END) AS INTEGER) AS dkimPass,
-      CAST(SUM(CASE WHEN ar.dkim != 'pass' THEN ar.count ELSE 0 END) AS INTEGER) AS dkimFail,
+      CAST(SUM(CASE WHEN ar.dkim IS NULL OR ar.dkim != 'pass' THEN ar.count ELSE 0 END) AS INTEGER) AS dkimFail,
       CAST(SUM(CASE WHEN ar.spf  = 'pass' THEN ar.count ELSE 0 END) AS INTEGER) AS spfPass,
-      CAST(SUM(CASE WHEN ar.spf  != 'pass' THEN ar.count ELSE 0 END) AS INTEGER) AS spfFail
+      CAST(SUM(CASE WHEN ar.spf IS NULL OR ar.spf != 'pass' THEN ar.count ELSE 0 END) AS INTEGER) AS spfFail
     FROM AggregateRecord ar
     JOIN AggregateReport rep ON rep.id = ar.reportId
     WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
