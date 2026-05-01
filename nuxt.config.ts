@@ -31,4 +31,11 @@ export default defineNuxtConfig({
     databaseUrl: process.env.DATABASE_URL ?? '', // bridges to Prisma's DATABASE_URL
     public: {},
   },
+
+  nitro: {
+    experimental: { wasm: true },
+    externals: {
+      external: ['@prisma/client'],
+    },
+  },
 })
