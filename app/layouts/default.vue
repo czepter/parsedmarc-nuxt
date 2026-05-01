@@ -81,13 +81,7 @@ async function logout() {
         <GlobalSearch />
 
         <!-- Logout -->
-        <button
-          type="button"
-          class="text-muted-foreground hover:text-foreground text-xs transition-colors"
-          @click="logout"
-        >
-          Sign out
-        </button>
+        <Button variant="ghost" size="sm" class="text-xs" @click="logout">Sign out</Button>
       </div>
     </header>
 

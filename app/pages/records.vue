@@ -266,7 +266,8 @@ const DISPOSITION_BADGE_CLASS: Record<string, string> = {
     </p>
 
     <!-- Table -->
-    <div class="rounded-md border">
+    <Card>
+      <CardContent class="p-0">
       <Table>
         <TableHeader>
           <TableRow>
@@ -358,7 +359,8 @@ const DISPOSITION_BADGE_CLASS: Record<string, string> = {
           </template>
         </TableBody>
       </Table>
-    </div>
+      </CardContent>
+    </Card>
 
     <!-- Empty state -->
     <Card

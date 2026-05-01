@@ -86,6 +86,9 @@ const { data: sourceIpsData, status: sourceIpsStatus, refresh: refreshSourceIps 
 const { data: headerFromData, status: headerFromStatus, refresh: refreshHeaderFrom } = await useFetch<{ domains: HeaderFromItem[] }>(headerFromKey, { watch: false, key: headerFromKey })
 const { data: authData, status: authStatus, refresh: refreshAuth } = await useFetch<{ dkim: AuthDimension; spf: AuthDimension }>(authKey, { watch: false, key: authKey })
 
+const heatmapKey = computed(() => `/api/dashboard/heatmap?from=${timeRange.value.from}&to=${timeRange.value.to}`)
+const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ matrix: number[][] }>(heatmapKey, { watch: false, key: heatmapKey })
+
 watch(selectedWindow, () => {
   refreshStats()
   refreshTimeseries()
@@ -93,6 +96,7 @@ watch(selectedWindow, () => {
   refreshSourceIps()
   refreshHeaderFrom()
   refreshAuth()
+  refreshHeatmap()
 })
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -217,10 +221,7 @@ const tableOpen = ref(false)
               :reject="timeseries.reject"
               :height="300"
             />
-            <div
-              v-else-if="timeseriesStatus === 'pending'"
-              class="bg-muted h-[300px] animate-pulse rounded-md"
-            />
+            <Skeleton v-else-if="timeseriesStatus === 'pending'" class="h-[300px] w-full rounded-md" />
             <div
               v-else
               class="text-muted-foreground flex h-[300px] items-center justify-center text-sm"
@@ -314,6 +315,29 @@ const tableOpen = ref(false)
             flag: c.name ? countryFlag(c.name) : undefined,
           }))"
         />
+      </SectionCard>
+    </div>
+
+    <!-- Visual Row: World Map + Activity Heatmap -->
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <SectionCard title="Geographic Distribution" subtitle="messages by country">
+        <ClientOnly>
+          <WorldMap
+            v-if="countriesStatus === 'success' && countriesData"
+            :countries="countriesData.countries.map(c => ({ name: c.name, count: c.count, share: c.share }))"
+          />
+          <Skeleton v-else class="h-[200px] w-full rounded-md" />
+        </ClientOnly>
+      </SectionCard>
+
+      <SectionCard title="Activity Heatmap" subtitle="messages by weekday &amp; hour">
+        <ClientOnly>
+          <HeatMap
+            v-if="heatmapStatus === 'success' && heatmapData"
+            :matrix="heatmapData.matrix"
+          />
+          <Skeleton v-else class="h-[140px] w-full rounded-md" />
+        </ClientOnly>
       </SectionCard>
     </div>
 
