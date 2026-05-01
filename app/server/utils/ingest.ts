@@ -130,8 +130,9 @@ export async function runIngest(inbox: InboxRow, decryptedPassword: string): Pro
                 },
               })
 
-              // GeoIP enrichment — non-fatal if MMDB is unavailable.
-              // lookupIp upserts the GeoLocation row internally; we then fetch the row ID.
+              // GeoIP enrichment — non-fatal if the WebServiceClient is unavailable
+              // (e.g. credentials unset, network failure). lookupIp upserts the
+              // GeoLocation row internally; we then fetch the row ID.
               try {
                 const geo = await lookupIp(rec.sourceIp)
                 if (geo) {
