@@ -6,7 +6,12 @@ function isActive(path: string): boolean {
 }
 
 async function logout() {
-  await $fetch('/api/auth/logout', { method: 'POST' })
+  try {
+    await $fetch('/api/auth/logout', { method: 'POST' })
+  }
+  catch {
+    // session clear may have still succeeded; navigate unconditionally
+  }
   await navigateTo('/login')
 }
 </script>
@@ -22,12 +27,12 @@ async function logout() {
         </NuxtLink>
 
         <!-- Nav links -->
-        <nav class="flex items-center gap-4 text-sm">
+        <nav aria-label="Main navigation" class="flex items-center gap-4 text-sm">
           <NuxtLink
             to="/"
             :class="[
               'transition-colors',
-              isActive('/') && route.path === '/'
+              route.path === '/'
                 ? 'text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground',
             ]"
@@ -55,6 +60,7 @@ async function logout() {
 
         <!-- Logout -->
         <button
+          type="button"
           class="text-muted-foreground hover:text-foreground text-xs transition-colors"
           @click="logout"
         >
