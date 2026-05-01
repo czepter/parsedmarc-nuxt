@@ -63,15 +63,15 @@
 
 **Exit criteria**
 
-- [ ] `nuxt-auth-utils` configured with session cookie + password hashing (argon2 or bcrypt)
-- [ ] `/setup` page renders only when no `User` rows exist
-- [ ] `/setup` POST creates the first operator and logs them in
-- [ ] `/login` page + POST handler
-- [ ] `/logout` POST handler
-- [ ] Auth middleware redirects unauthenticated requests to `/login` (except `/setup`, `/login`, `/api/health`)
-- [ ] Rate limiter on `/login` (5/IP/5min)
-- [ ] `/api/health` returns `{ status, db, mmdb }` JSON
-- [ ] Playwright e2e: setup → logout → login → see dashboard placeholder
+- [x] `nuxt-auth-utils` configured with session cookie + password hashing (argon2 or bcrypt)
+- [x] `/setup` page renders only when no `User` rows exist
+- [x] `/setup` POST creates the first operator and logs them in
+- [x] `/login` page + POST handler
+- [x] `/logout` POST handler
+- [x] Auth middleware redirects unauthenticated requests to `/login` (except `/setup`, `/login`, `/api/health`)
+- [x] Rate limiter on `/login` (5/IP/5min)
+- [x] `/api/health` returns `{ status, db, mmdb }` JSON
+- [x] Playwright e2e: setup → logout → login → see dashboard placeholder
 
 **Satisfies.** PRD J1.R2, NFR-S1, NFR-S4, NFR-S5, NFR-O3.
 

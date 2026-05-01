@@ -258,7 +258,7 @@ Owner of all items below: the first implementation PR(s).
 - [x] Add locked-in deps (section 11.2)
 - [x] Real Prisma schema + initial migration (section 11.3)
 - [x] `.env.example` + `runtimeConfig` (section 11.4, 11.8)
-- [ ] Auth: register/login pages, session middleware (`nuxt-auth-utils`)
+- [x] Auth: register/login pages, session middleware (`nuxt-auth-utils`)
 - [ ] GeoIP bootstrap plugin (section 11.5)
 - [ ] Scheduler plugin (section 11.6)
 - [ ] IMAP fetcher (`lib/imap/`)
