@@ -265,7 +265,7 @@ Owner of all items below: the first implementation PR(s).
 - [x] Aggregate report parser (`lib/dmarc/aggregate.ts`)
 - [x] Forensic report parser (`lib/dmarc/forensic.ts`)
 - [x] Inbox admin UI (`app/pages/inboxes/`)
-- [ ] Dashboard (summary tiles + hero chart + records table)
+- [x] Dashboard (summary tiles + hero chart + records table)
 - [ ] Domain detail view
 - [ ] Dark mode
 - [ ] Dockerfile + compose example

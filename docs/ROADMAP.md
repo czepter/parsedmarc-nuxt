@@ -149,12 +149,12 @@
 
 **Exit criteria**
 
-- [ ] `/` route renders: tiles (J2.R1), uPlot hero chart (J2.R2), records table (J2.R3)
-- [ ] Time window selector (24h / 7d / 30d / 90d / custom)
-- [ ] uPlot wrapper component in `app/components/charts/TimeSeries.vue`
-- [ ] Initial paint under 1.5 s on 100k-record DB (NFR-P1) — measured, not assumed
-- [ ] Chart smooth at 5,000 points (NFR-P4)
-- [ ] Records table: pagination 50/page, sort by time/count, filter by disposition
+- [x] `/` route renders: tiles (J2.R1), uPlot hero chart (J2.R2), records table (J2.R3)
+- [x] Time window selector (24h / 7d / 30d / 90d / custom)
+- [x] uPlot wrapper component in `app/components/charts/TimeSeries.vue`
+- [x] Initial paint under 1.5 s on 100k-record DB (NFR-P1) — measured, not assumed
+- [x] Chart smooth at 5,000 points (NFR-P4)
+- [x] Records table: pagination 50/page, sort by time/count, filter by disposition
 
 **Satisfies.** PRD J2.R1–R3, NFR-P1, NFR-P4.
 
