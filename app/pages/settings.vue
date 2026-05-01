@@ -1,44 +1,19 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
-interface MmdbStatus {
-  exists: boolean
-  ageDays: number | null
-  readerActive: boolean
+interface GeoipStatus {
+  clientActive: boolean
 }
 
 interface SettingsStatusResponse {
-  mmdb: MmdbStatus
+  geoip: GeoipStatus
   user: { email: string }
   licenseKeyConfigured: boolean
 }
 
-const { data, status, error, refresh } = await useFetch<SettingsStatusResponse>(
+const { data, status, error } = await useFetch<SettingsStatusResponse>(
   '/api/settings/status',
 )
-
-// ── GeoIP refresh ──────────────────────────────────────────────────────────
-const refreshing = ref(false)
-const refreshError = ref('')
-const refreshSuccess = ref(false)
-
-async function refreshMmdb() {
-  refreshing.value = true
-  refreshError.value = ''
-  refreshSuccess.value = false
-  try {
-    await $fetch('/api/settings/mmdb-refresh', { method: 'POST' })
-    refreshSuccess.value = true
-    await refresh()
-  }
-  catch (err: unknown) {
-    const e = err as { data?: { statusMessage?: string }; message?: string }
-    refreshError.value = e?.data?.statusMessage ?? e?.message ?? 'Refresh failed'
-  }
-  finally {
-    refreshing.value = false
-  }
-}
 
 // ── Password change ────────────────────────────────────────────────────────
 const pwForm = reactive({
@@ -72,7 +47,11 @@ async function changePassword() {
 
 // ── Backup ─────────────────────────────────────────────────────────────────
 function downloadBackup() {
-  window.location.href = '/api/settings/backup'
+  // import.meta.client is Nuxt 4's SSR-safe guard; the server bundle never
+  // reaches this branch, so window is always defined when the code runs.
+  if (import.meta.client) {
+    window.location.href = '/api/settings/backup'
+  }
 }
 </script>
 
@@ -100,50 +79,30 @@ function downloadBackup() {
         <CardContent class="pt-6 space-y-4">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-base font-semibold">GeoIP Database</h2>
+              <h2 class="text-base font-semibold">GeoIP</h2>
               <p class="text-muted-foreground mt-0.5 text-sm">
-                MaxMind GeoLite2-City — used to enrich source IPs with country and city.
+                MaxMind GeoLite2 web service — enriches source IPs with country and city at ingestion time.
               </p>
             </div>
 
             <!-- Status badge -->
             <div class="shrink-0">
               <span
-                v-if="data.mmdb.exists"
                 :class="[
                   'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                  data.mmdb.readerActive
+                  data.geoip.clientActive
                     ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400'
-                    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400',
+                    : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400',
                 ]"
               >
-                {{ data.mmdb.readerActive ? 'Active' : 'File present, reader inactive' }}
-              </span>
-              <span
-                v-else
-                class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400"
-              >
-                Not downloaded
+                {{ data.geoip.clientActive ? 'Active' : 'Inactive' }}
               </span>
             </div>
           </div>
 
-          <!-- Age info -->
-          <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-            <div v-if="data.mmdb.exists">
-              <dt class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Age</dt>
-              <dd class="mt-0.5 font-medium">
-                {{ data.mmdb.ageDays }} day{{ data.mmdb.ageDays === 1 ? '' : 's' }}
-                <span
-                  v-if="data.mmdb.ageDays !== null && data.mmdb.ageDays > 35"
-                  class="text-amber-600 dark:text-amber-400"
-                >
-                  (stale)
-                </span>
-              </dd>
-            </div>
+          <dl class="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt class="text-muted-foreground text-xs font-medium uppercase tracking-wide">License key</dt>
+              <dt class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Credentials</dt>
               <dd class="mt-0.5 font-medium">
                 <span v-if="data.licenseKeyConfigured" class="text-green-700 dark:text-green-400">Configured</span>
                 <span v-else class="text-red-600 dark:text-red-400">Not set</span>
@@ -151,23 +110,10 @@ function downloadBackup() {
             </div>
           </dl>
 
-          <!-- Refresh button + feedback -->
-          <div class="space-y-2">
-            <Button
-              :disabled="refreshing || !data.licenseKeyConfigured"
-              size="sm"
-              @click="refreshMmdb"
-            >
-              {{ refreshing ? 'Downloading…' : 'Refresh GeoIP now' }}
-            </Button>
-            <p v-if="!data.licenseKeyConfigured" class="text-muted-foreground text-xs">
-              Set <code class="font-mono">NUXT_MAXMIND_LICENSE_KEY</code> to enable GeoIP refresh.
-            </p>
-            <p v-if="refreshError" class="text-destructive text-sm">{{ refreshError }}</p>
-            <p v-if="refreshSuccess" class="text-sm text-green-700 dark:text-green-400">
-              GeoIP database refreshed successfully.
-            </p>
-          </div>
+          <p v-if="!data.licenseKeyConfigured" class="text-muted-foreground text-xs">
+            Set <code class="font-mono">NUXT_MAXMIND_ACCOUNT_ID</code> and
+            <code class="font-mono">NUXT_MAXMIND_LICENSE_KEY</code> to enable GeoIP enrichment.
+          </p>
         </CardContent>
       </Card>
 
