@@ -1,13 +1,7 @@
 import { Cron } from 'croner'
-import { join } from 'node:path'
-import { open } from 'maxmind'
-import { downloadMmdb } from '~~/lib/geoip/download'
-import { setGeoReader } from '~~/lib/geoip/reader'
 import prisma from '~~/lib/prisma'
 import { decrypt } from '../utils/encryption'
 import { runIngest } from '../utils/ingest'
-
-const MMDB_PATH = join(process.cwd(), 'data', 'GeoLite2-City.mmdb')
 
 /**
  * Check if a cron expression would have fired within the last 60 seconds.
@@ -32,25 +26,6 @@ export default defineNitroPlugin(() => {
   // --- Smoke test (runs once at startup) ---
   new Cron('* * * * *', { maxRuns: 1 }, () => {
     console.info('[scheduler] cron smoke test: OK')
-  })
-
-  // --- Monthly MMDB refresh ---
-  new Cron('0 4 1 * *', async () => {
-    const licenseKey = useRuntimeConfig().maxmindLicenseKey
-    if (!licenseKey) {
-      console.warn('[scheduler] MMDB refresh skipped — NUXT_MAXMIND_LICENSE_KEY not set')
-      return
-    }
-    console.info('[scheduler] Starting monthly MMDB refresh…')
-    try {
-      await downloadMmdb(licenseKey, MMDB_PATH)
-      const reader = await open(MMDB_PATH)
-      setGeoReader(reader)
-      console.info('[scheduler] MMDB refresh complete')
-    }
-    catch (err) {
-      console.error('[scheduler] MMDB refresh failed:', (err as Error).message)
-    }
   })
 
   // --- Per-inbox DMARC ingestion dispatcher ---
