@@ -10,10 +10,10 @@ interface Row {
   data: { pass: number; fail: number; total: number }
 }
 
-const rows: Row[] = [
+const rows = computed<Row[]>(() => [
   { label: 'DKIM', data: props.dkim },
   { label: 'SPF',  data: props.spf  },
-]
+])
 
 function passPercent(d: { pass: number; total: number }): number {
   if (d.total === 0) return 0

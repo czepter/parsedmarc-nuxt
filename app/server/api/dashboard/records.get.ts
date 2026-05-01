@@ -55,8 +55,13 @@ export default defineEventHandler(async (event): Promise<RecordsResponse> => {
     ? { disposition: { in: dispositionParam } }
     : {}
 
+  const dkimParam = ['pass', 'fail'].includes(String(query.dkim)) ? String(query.dkim) : null
+  const spfParam  = ['pass', 'fail'].includes(String(query.spf))  ? String(query.spf)  : null
+
   const where = {
     ...dispositionFilter,
+    ...(dkimParam ? { dkim: dkimParam } : {}),
+    ...(spfParam  ? { spf:  spfParam  } : {}),
     report: {
       dateBegin: { gte: new Date(fromMs), lt: new Date(toMs) },
     },

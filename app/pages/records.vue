@@ -66,7 +66,7 @@ const spfFilter = computed<string>(() => {
   return ['pass', 'fail'].includes(v) ? v : 'all'
 })
 
-// Client-side search fields (not sent to API)
+// Client-side text search (filters current page; debounced URL sync)
 const ipSearch = ref((route.query.ip as string) ?? '')
 const headerFromSearch = ref((route.query.headerFrom as string) ?? '')
 
@@ -112,21 +112,26 @@ function setSpf(v: string) {
   router.push({ query: { ...route.query, spf: v === 'all' ? undefined : v, page: 1 } })
 }
 
-// Keep URL in sync with local search refs (debounced via watch)
-watch(ipSearch, (val) => {
+// Keep URL in sync with text search refs (debounced to avoid a navigation per keystroke)
+const syncIpToUrl = useDebounceFn((val: string) => {
   router.replace({ query: { ...route.query, ip: val || undefined, page: 1 } })
-})
-watch(headerFromSearch, (val) => {
+}, 300)
+const syncHeaderFromToUrl = useDebounceFn((val: string) => {
   router.replace({ query: { ...route.query, headerFrom: val || undefined, page: 1 } })
-})
+}, 300)
+watch(ipSearch, syncIpToUrl)
+watch(headerFromSearch, syncHeaderFromToUrl)
 
 // ── data fetching ──────────────────────────────────────────────────────────
-const recordsKey = computed(
-  () =>
+const recordsKey = computed(() => {
+  let key =
     `/api/dashboard/records?from=${timeRange.value.from}&to=${timeRange.value.to}` +
-    `&page=${currentPage.value}&sort=${sortField.value}&order=${sortOrder.value}` +
-    (activeDispositions.value.length ? `&disposition=${activeDispositions.value.join(',')}` : ''),
-)
+    `&page=${currentPage.value}&sort=${sortField.value}&order=${sortOrder.value}`
+  if (activeDispositions.value.length) key += `&disposition=${activeDispositions.value.join(',')}`
+  if (dkimFilter.value !== 'all') key += `&dkim=${dkimFilter.value}`
+  if (spfFilter.value !== 'all') key += `&spf=${spfFilter.value}`
+  return key
+})
 
 const {
   data: recordsData,
@@ -134,23 +139,22 @@ const {
   refresh: refreshRecords,
 } = await useFetch<RecordsResponse>(recordsKey, { watch: false, key: recordsKey })
 
-watch([currentPage, sortField, sortOrder, activeDispositions, selectedWindow], () => {
+watch([currentPage, sortField, sortOrder, activeDispositions, dkimFilter, spfFilter, selectedWindow], () => {
   refreshRecords()
 })
 
-// ── client-side filtering ─────────────────────────────────────────────────
+// ── client-side text filtering (current page only) ────────────────────────
+// DKIM and SPF are server-side (included in recordsKey → API).
+// IP and Header-From are text searches that filter the current page locally
+// while the debounced URL sync keeps them bookmarkable.
 const filteredRecords = computed(() => {
   const records = recordsData.value?.records ?? []
   const ipQ = ipSearch.value.trim().toLowerCase()
   const hfQ = headerFromSearch.value.trim().toLowerCase()
-  const dk = dkimFilter.value
-  const sp = spfFilter.value
 
   return records.filter((r) => {
     if (ipQ && !r.sourceIp.toLowerCase().includes(ipQ)) return false
     if (hfQ && !r.headerFrom.toLowerCase().includes(hfQ)) return false
-    if (dk !== 'all' && r.dkim !== dk) return false
-    if (sp !== 'all' && r.spf !== sp) return false
     return true
   })
 })
