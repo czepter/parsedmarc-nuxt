@@ -27,6 +27,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     sessionPassword: '',         // NUXT_SESSION_PASSWORD
+    maxmindAccountId: '',        // NUXT_MAXMIND_ACCOUNT_ID
     maxmindLicenseKey: '',       // NUXT_MAXMIND_LICENSE_KEY
     databaseUrl: process.env.DATABASE_URL ?? '', // bridges to Prisma's DATABASE_URL
     public: {},
