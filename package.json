@@ -17,6 +17,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@maxmind/geoip2-node": "^6.3.4",
     "@node-rs/bcrypt": "^1.10.7",
     "@nuxt/fonts": "0.14.0",
     "@nuxt/icon": "2.2.1",
@@ -34,7 +35,6 @@
     "imapflow": "^1.3.2",
     "lucide-vue-next": "^1.0.0",
     "mailparser": "^3.9.8",
-    "maxmind": "^5.0.6",
     "nuxt": "^4.4.2",
     "nuxt-auth-utils": "^0.5.29",
     "pinia": "^3.0.4",
@@ -42,7 +42,6 @@
     "shadcn-nuxt": "2.6.2",
     "shadcn-vue": "^2.6.2",
     "tailwind-merge": "^3.5.0",
-    "tar": "^7.5.13",
     "uplot": "^1.6.32",
     "vue": "^3.5.33",
     "vue-router": "^5.0.6",
