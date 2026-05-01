@@ -1,9 +1,10 @@
 import prisma from '~~/lib/prisma'
 
 export default defineEventHandler(async () => {
-  // Only allow this in non-production environments.
-  // In production NODE_ENV=production; this returns 404.
-  if (process.env.NODE_ENV !== 'test') {
+  // Guard: never available in production. In dev/test mode it is always
+  // accessible (Nuxt dev server normalises NODE_ENV to 'development', so
+  // checking for 'test' specifically would always block).
+  if (process.env.NODE_ENV === 'production') {
     throw createError({ statusCode: 404 })
   }
   await prisma.user.deleteMany()

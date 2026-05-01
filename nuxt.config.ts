@@ -32,4 +32,19 @@ export default defineNuxtConfig({
     public: {},
   },
 
+  // Explicitly place serverDir inside app/ so all non-config files live
+  // under the same srcDir. Nuxt 4 defaults serverDir to <rootDir>/server;
+  // this override keeps the project layout consistent with srcDir = app/.
+  serverDir: 'app/server',
+
+  // Prisma 7 uses a WASM-compiled SQLite query engine. Enable WASM support
+  // in Nitro so the bundler handles the .wasm binary. Externalize @prisma/client
+  // so Rollup doesn't try to bundle it (it contains dynamic requires).
+  nitro: {
+    experimental: { wasm: true },
+    externals: {
+      external: ['@prisma/client'],
+    },
+  },
+
 })

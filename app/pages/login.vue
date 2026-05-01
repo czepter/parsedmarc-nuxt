@@ -1,4 +1,13 @@
 <script setup lang="ts">
+// Guard: redirect to /setup on a fresh install where no users exist yet.
+// Symmetric with setup.vue's guard that redirects the other way.
+const { data: status } = await useAsyncData('setup-status-for-login', () =>
+  $fetch<{ exists: boolean }>('/api/auth/setup-status'),
+)
+if (!status.value?.exists) {
+  await navigateTo('/setup', { redirectCode: 302 })
+}
+
 const form = reactive({ email: '', password: '' })
 const error = ref('')
 const loading = ref(false)
