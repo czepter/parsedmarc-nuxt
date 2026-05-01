@@ -271,18 +271,18 @@ const DISPOSITION_BADGE_CLASS: Record<string, string> = {
         <TableHeader>
           <TableRow>
             <TableHead>
-              <button class="flex items-center gap-1 font-medium" @click="setSort('time')">
+              <Button variant="ghost" size="sm" class="-ml-2 flex items-center gap-1 font-medium" @click="setSort('time')">
                 Timestamp
                 <span v-if="sortField === 'time'" class="text-xs opacity-70">{{ SORT_ICON[sortOrder] }}</span>
-              </button>
+              </Button>
             </TableHead>
             <TableHead>Source IP</TableHead>
             <TableHead>Country</TableHead>
             <TableHead>
-              <button class="flex items-center gap-1 font-medium" @click="setSort('count')">
+              <Button variant="ghost" size="sm" class="-ml-2 flex items-center gap-1 font-medium" @click="setSort('count')">
                 Count
                 <span v-if="sortField === 'count'" class="text-xs opacity-70">{{ SORT_ICON[sortOrder] }}</span>
-              </button>
+              </Button>
             </TableHead>
             <TableHead>Disposition</TableHead>
             <TableHead>Header From</TableHead>
