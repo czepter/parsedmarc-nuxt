@@ -77,7 +77,7 @@ export default defineEventHandler(async (event): Promise<SearchResponse> => {
     type: 'ip',
     ip: g.ip,
     country: g.country,
-    href: `/ips/${g.ip}`,
+    href: `/ips/${encodeURIComponent(g.ip)}`,
   }))
 
   const forensics: ForensicResult[] = forensicRows.map(f => ({

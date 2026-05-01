@@ -38,6 +38,9 @@ const focusedIndex = ref(-1)
 
 // Debounce: set debouncedQuery 300ms after last keystroke
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 watch(rawQuery, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
   if (val.trim().length < 2) {
@@ -163,6 +166,7 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
         />
         <button
           type="button"
+          aria-label="Close search"
           class="text-muted-foreground hover:text-foreground text-xs"
           @click="closeSearch"
         >
@@ -179,7 +183,7 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
 
         <!-- Empty query -->
         <p
-          v-else-if="rawQuery.length < 2 && !results"
+          v-else-if="rawQuery.trim().length < 2 && !results"
           class="text-muted-foreground px-3 py-4 text-center text-sm"
         >
           Type at least 2 characters to search.
