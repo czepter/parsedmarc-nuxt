@@ -16,6 +16,15 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: [
+        'class-variance-authority',
+        '@vueuse/core',
+        'reka-ui',
+        'clsx',
+        'tailwind-merge',
+      ],
+    },
   },
 
   css: ['~/assets/css/tailwind.css'],
@@ -24,6 +33,13 @@ export default defineNuxtConfig({
     prefix: '',
     componentDir: './app/components/ui',
   },
+
+  // Scan all component subdirectories without prepending the folder name.
+  // Default Nuxt behaviour would turn `charts/TopList.vue` into <ChartsTopList>,
+  // but our templates reference them by their plain filename (e.g. <TopList>).
+  components: [
+    { path: '~/components', pathPrefix: false },
+  ],
 
   runtimeConfig: {
     sessionPassword: '',         // NUXT_SESSION_PASSWORD
