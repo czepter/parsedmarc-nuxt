@@ -77,6 +77,9 @@ importers:
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
+      tar:
+        specifier: ^7.5.13
+        version: 7.5.13
       uplot:
         specifier: ^1.6.32
         version: 1.6.32

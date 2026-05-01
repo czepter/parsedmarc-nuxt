@@ -40,6 +40,7 @@
     "shadcn-nuxt": "2.6.2",
     "shadcn-vue": "^2.6.2",
     "tailwind-merge": "^3.5.0",
+    "tar": "^7.5.13",
     "uplot": "^1.6.32",
     "vue": "^3.5.33",
     "vue-router": "^5.0.6"
