@@ -40,6 +40,17 @@ async function logout() {
             Dashboard
           </NuxtLink>
           <NuxtLink
+            to="/records"
+            :class="[
+              'transition-colors',
+              isActive('/records')
+                ? 'text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground',
+            ]"
+          >
+            Records
+          </NuxtLink>
+          <NuxtLink
             to="/inboxes"
             :class="[
               'transition-colors',

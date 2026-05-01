@@ -20,25 +20,6 @@ interface TimeseriesResponse {
   quarantine: number[]
   reject: number[]
 }
-interface RecordRow {
-  id: string
-  dateBegin: string
-  sourceIp: string
-  country: string | null
-  count: number
-  disposition: string
-  headerFrom: string
-  dkim: string
-  spf: string
-}
-interface RecordsResponse {
-  records: RecordRow[]
-  total: number
-  page: number
-  pageSize: number
-  totalPages: number
-}
-
 // ── URL state ──────────────────────────────────────────────────────────────
 const route = useRoute()
 const router = useRouter()
@@ -58,19 +39,6 @@ const selectedWindow = computed<WindowKey>(() => {
     : '7d'
 })
 
-const currentPage = computed(() => Number(route.query.page ?? 1))
-const sortField = computed<'time' | 'count'>(() =>
-  route.query.sort === 'count' ? 'count' : 'time',
-)
-const sortOrder = computed<'asc' | 'desc'>(() =>
-  route.query.order === 'asc' ? 'asc' : 'desc',
-)
-const activeDispositions = computed<string[]>(() => {
-  const d = route.query.disposition
-  if (!d) return []
-  return String(d).split(',').filter(Boolean)
-})
-
 function nowSeconds() {
   return Math.floor(Date.now() / 1000)
 }
@@ -86,36 +54,12 @@ function setWindow(w: WindowKey) {
   router.push({ query: { ...route.query, window: w, page: 1 } })
 }
 
-function setPage(p: number) {
-  router.push({ query: { ...route.query, page: p } })
-}
-
-function setSort(field: 'time' | 'count') {
-  const newOrder =
-    sortField.value === field && sortOrder.value === 'desc' ? 'asc' : 'desc'
-  router.push({ query: { ...route.query, sort: field, order: newOrder, page: 1 } })
-}
-
-function toggleDisposition(d: string) {
-  const current = new Set(activeDispositions.value)
-  if (current.has(d)) current.delete(d)
-  else current.add(d)
-  const value = Array.from(current).join(',') || undefined
-  router.push({ query: { ...route.query, disposition: value, page: 1 } })
-}
-
 // ── data fetching ──────────────────────────────────────────────────────────
 const statsKey = computed(
   () => `/api/dashboard/stats?from=${timeRange.value.from}&to=${timeRange.value.to}`,
 )
 const timeseriesKey = computed(
   () => `/api/dashboard/timeseries?from=${timeRange.value.from}&to=${timeRange.value.to}`,
-)
-const recordsKey = computed(
-  () =>
-    `/api/dashboard/records?from=${timeRange.value.from}&to=${timeRange.value.to}` +
-    `&page=${currentPage.value}&sort=${sortField.value}&order=${sortOrder.value}` +
-    (activeDispositions.value.length ? `&disposition=${activeDispositions.value.join(',')}` : ''),
 )
 
 const { data: stats, status: statsStatus, refresh: refreshStats } = await useFetch<StatsResponse>(
@@ -127,20 +71,10 @@ const {
   status: timeseriesStatus,
   refresh: refreshTimeseries,
 } = await useFetch<TimeseriesResponse>(timeseriesKey, { watch: false, key: timeseriesKey })
-const {
-  data: recordsData,
-  status: recordsStatus,
-  refresh: refreshRecords,
-} = await useFetch<RecordsResponse>(recordsKey, { watch: false, key: recordsKey })
 
 watch(selectedWindow, () => {
   refreshStats()
   refreshTimeseries()
-  refreshRecords()
-})
-
-watch([currentPage, sortField, sortOrder, activeDispositions], () => {
-  refreshRecords()
 })
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -159,17 +93,6 @@ function fmtPercent(n: number): string {
   return `${n.toFixed(1)}%`
 }
 
-const DISPOSITION_COLORS: Record<string, string> = {
-  none: 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
-  quarantine: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
-  reject: 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
-}
-
-function dispositionClass(d: string): string {
-  return DISPOSITION_COLORS[d] ?? 'text-muted-foreground bg-muted border-border'
-}
-
-const SORT_ICON: Record<string, string> = { asc: '↑', desc: '↓' }
 </script>
 
 <template>
@@ -306,122 +229,11 @@ const SORT_ICON: Record<string, string> = { asc: '↑', desc: '↓' }
       </CardContent>
     </Card>
 
-    <!-- Records table -->
-    <div class="space-y-3">
-      <!-- Filter row -->
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-muted-foreground text-sm">Disposition:</span>
-        <button
-          v-for="d in ['none', 'quarantine', 'reject']"
-          :key="d"
-          :class="[
-            'rounded-full border px-3 py-0.5 text-xs font-medium transition-colors',
-            activeDispositions.includes(d)
-              ? dispositionClass(d)
-              : 'text-muted-foreground border-border hover:text-foreground',
-          ]"
-          @click="toggleDisposition(d)"
-        >
-          {{ d }}
-        </button>
-        <button
-          v-if="activeDispositions.length > 0"
-          class="text-muted-foreground text-xs underline"
-          @click="router.push({ query: { ...route.query, disposition: undefined, page: 1 } })"
-        >
-          Clear
-        </button>
-      </div>
-
-      <!-- Table -->
-      <div class="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
-                <button class="flex items-center gap-1" @click="setSort('time')">
-                  Timestamp
-                  <span v-if="sortField === 'time'" class="text-xs">{{ SORT_ICON[sortOrder] }}</span>
-                </button>
-              </TableHead>
-              <TableHead>Source IP</TableHead>
-              <TableHead>Country</TableHead>
-              <TableHead>
-                <button class="flex items-center gap-1" @click="setSort('count')">
-                  Count
-                  <span v-if="sortField === 'count'" class="text-xs">{{ SORT_ICON[sortOrder] }}</span>
-                </button>
-              </TableHead>
-              <TableHead>Disposition</TableHead>
-              <TableHead>Header From</TableHead>
-              <TableHead>DKIM</TableHead>
-              <TableHead>SPF</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <template v-if="recordsStatus === 'success' && recordsData">
-              <TableRow v-for="record in recordsData.records" :key="record.id">
-                <TableCell class="text-sm">{{ new Date(record.dateBegin).toLocaleString() }}</TableCell>
-                <TableCell>
-                  <Button variant="link" size="sm" class="h-auto p-0 font-mono text-xs" as-child>
-                    <NuxtLink :to="`/ips/${record.sourceIp}`">{{ record.sourceIp }}</NuxtLink>
-                  </Button>
-                </TableCell>
-                <TableCell class="text-sm">{{ record.country ?? '—' }}</TableCell>
-                <TableCell class="text-right text-sm">{{ record.count.toLocaleString() }}</TableCell>
-                <TableCell>
-                  <span :class="['inline-block rounded-full border px-2 py-0.5 text-xs font-medium', dispositionClass(record.disposition)]">
-                    {{ record.disposition }}
-                  </span>
-                </TableCell>
-                <TableCell class="font-mono text-xs">{{ record.headerFrom }}</TableCell>
-                <TableCell>
-                  <span :class="record.dkim === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" class="text-xs font-medium">
-                    {{ record.dkim }}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span :class="record.spf === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'" class="text-xs font-medium">
-                    {{ record.spf }}
-                  </span>
-                </TableCell>
-              </TableRow>
-
-              <TableRow v-if="recordsData.records.length === 0">
-                <TableCell colspan="8" class="text-muted-foreground py-12 text-center text-sm">
-                  No records for this time window.
-                </TableCell>
-              </TableRow>
-            </template>
-
-            <TableRow v-else-if="recordsStatus === 'pending'">
-              <TableCell colspan="8" class="text-muted-foreground py-12 text-center text-sm">
-                Loading…
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-
-      <!-- Pagination -->
-      <div
-        v-if="recordsData && recordsData.totalPages > 1"
-        class="flex items-center justify-between text-sm"
-      >
-        <p class="text-muted-foreground">
-          Showing {{ ((currentPage - 1) * 50) + 1 }}–{{ Math.min(currentPage * 50, recordsData.total) }}
-          of {{ recordsData.total.toLocaleString() }} records
-        </p>
-        <div class="flex gap-1">
-          <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="setPage(currentPage - 1)">
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" :disabled="currentPage >= recordsData.totalPages" @click="setPage(currentPage + 1)">
-            Next
-          </Button>
-        </div>
-      </div>
+    <!-- View all records -->
+    <div class="flex justify-end">
+      <Button variant="outline" as-child>
+        <NuxtLink to="/records">View all records →</NuxtLink>
+      </Button>
     </div>
 
   </div>
