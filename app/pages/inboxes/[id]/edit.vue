@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
 const route = useRoute()
 const id = route.params.id as string
 

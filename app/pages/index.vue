@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
 // ── types ─────────────────────────────────────────────────────────────────
 interface TileData {
   totalMessages: number

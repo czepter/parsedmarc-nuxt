@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
 const form = reactive({
   label: '',
   host: '',

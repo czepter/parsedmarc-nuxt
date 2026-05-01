@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
 const { data: inboxes, refresh, status, error } = await useFetch('/api/inboxes')
 
 const scanningIds = ref(new Set<string>())
