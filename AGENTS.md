@@ -261,9 +261,9 @@ Owner of all items below: the first implementation PR(s).
 - [x] Auth: register/login pages, session middleware (`nuxt-auth-utils`)
 - [x] GeoIP bootstrap plugin (section 11.5)
 - [x] Scheduler plugin (section 11.6)
-- [ ] IMAP fetcher (`lib/imap/`)
-- [ ] Aggregate report parser (`lib/dmarc/aggregate.ts`)
-- [ ] Forensic report parser (`lib/dmarc/forensic.ts`)
+- [x] IMAP fetcher (`lib/imap/`)
+- [x] Aggregate report parser (`lib/dmarc/aggregate.ts`)
+- [x] Forensic report parser (`lib/dmarc/forensic.ts`)
 - [x] Inbox admin UI (`app/pages/inboxes/`)
 - [ ] Dashboard (summary tiles + hero chart + records table)
 - [ ] Domain detail view

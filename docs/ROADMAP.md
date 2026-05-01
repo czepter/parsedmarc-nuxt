@@ -125,17 +125,17 @@
 
 **Exit criteria**
 
-- [ ] `lib/imap/client.ts` wraps `imapflow` with connect/disconnect helpers
-- [ ] `lib/imap/dispatcher.ts` classifies a parsed message → `aggregate` | `forensic` | `unknown`
-- [ ] `lib/dmarc/aggregate.ts` parses XML (zip, gz, plain) → typed `AggregateReport` + `AggregateRecord[]`
-- [ ] `lib/dmarc/forensic.ts` parses AFRF / `message/feedback-report` → typed `ForensicReport`
-- [ ] `app/server/utils/ingest.ts` wires it together: dispatch → upsert → enrich
-- [ ] Per-inbox croner job in `scheduler.ts` calls the ingest pipeline
-- [ ] Every poll writes a `ScanRun` row regardless of outcome (NFR-O1)
-- [ ] One bad message does not block the rest of the batch (NFR-R1)
-- [ ] One bad inbox does not block other inboxes (NFR-R2)
-- [ ] Unit tests against fixture corpus in `test/fixtures/dmarc/` (NFR-T3): Google, Microsoft, Yahoo, Mailru, plus one weird/malformed sample
-- [ ] Coverage on `lib/dmarc/` and `lib/imap/dispatcher.ts` >= 80% (NFR-T1)
+- [x] `lib/imap/client.ts` wraps `imapflow` with connect/disconnect helpers
+- [x] `lib/imap/dispatcher.ts` classifies a parsed message → `aggregate` | `forensic` | `unknown`
+- [x] `lib/dmarc/aggregate.ts` parses XML (zip, gz, plain) → typed `AggregateReport` + `AggregateRecord[]`
+- [x] `lib/dmarc/forensic.ts` parses AFRF / `message/feedback-report` → typed `ForensicReport`
+- [x] `app/server/utils/ingest.ts` wires it together: dispatch → upsert → enrich
+- [x] Per-inbox croner job in `scheduler.ts` calls the ingest pipeline
+- [x] Every poll writes a `ScanRun` row regardless of outcome (NFR-O1)
+- [x] One bad message does not block the rest of the batch (NFR-R1)
+- [x] One bad inbox does not block other inboxes (NFR-R2)
+- [x] Unit tests against fixture corpus in `test/fixtures/dmarc/` (NFR-T3): Google, Microsoft, Yahoo, Mailru, plus one weird/malformed sample
+- [x] Coverage on `lib/dmarc/` and `lib/imap/dispatcher.ts` >= 80% (NFR-T1)
 
 **Satisfies.** PRD J1.R4, NFR-O1, NFR-R1, NFR-R2, NFR-T1, NFR-T3.
 
