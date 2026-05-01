@@ -1,11 +1,11 @@
 <script setup lang="ts">
-const { data: inboxes, refresh } = await useFetch('/api/inboxes')
+const { data: inboxes, refresh, status, error } = await useFetch('/api/inboxes')
 
 const scanningId = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
 
 async function scanNow(id: string) {
-  if (scanningId.value) return
+  if (scanningId.value === id) return
   scanningId.value = id
   try {
     await $fetch(`/api/inboxes/${id}/scan`, { method: 'POST' })
@@ -26,6 +26,9 @@ async function deleteInbox(id: string, label: string) {
     await $fetch(`/api/inboxes/${id}`, { method: 'DELETE' })
     await refresh()
   }
+  catch (e: unknown) {
+    alert(`Delete failed: ${(e as { statusMessage?: string }).statusMessage ?? 'Unknown error'}`)
+  }
   finally {
     deletingId.value = null
   }
@@ -36,17 +39,20 @@ async function deleteInbox(id: string, label: string) {
   <div class="mx-auto max-w-5xl space-y-6 p-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Inboxes</h1>
-      <NuxtLink to="/inboxes/new">
-        <Button>+ Add Inbox</Button>
-      </NuxtLink>
+      <Button variant="outline" size="sm" as-child>
+        <NuxtLink to="/inboxes/new">+ Add Inbox</NuxtLink>
+      </Button>
     </div>
 
-    <div v-if="!inboxes?.length" class="text-muted-foreground rounded-md border p-12 text-center text-sm">
+    <div v-if="status === 'error'" class="text-destructive rounded-md border p-12 text-center text-sm">
+      Failed to load inboxes: {{ error?.message }}
+    </div>
+    <div v-else-if="status === 'success' && !inboxes?.length" class="text-muted-foreground rounded-md border p-12 text-center text-sm">
       No inboxes configured yet.
       <NuxtLink to="/inboxes/new" class="text-foreground underline">Add your first inbox.</NuxtLink>
     </div>
 
-    <Table v-else>
+    <Table v-else-if="status === 'success' && inboxes?.length">
       <TableHeader>
         <TableRow>
           <TableHead>Label</TableHead>
@@ -68,12 +74,12 @@ async function deleteInbox(id: string, label: string) {
             </Badge>
           </TableCell>
           <TableCell class="space-x-2 text-right">
-            <NuxtLink :to="`/inboxes/${inbox.id}/edit`">
-              <Button variant="outline" size="sm">Edit</Button>
-            </NuxtLink>
-            <NuxtLink :to="`/inboxes/${inbox.id}/runs`">
-              <Button variant="outline" size="sm">Runs</Button>
-            </NuxtLink>
+            <Button variant="outline" size="sm" as-child>
+              <NuxtLink :to="`/inboxes/${inbox.id}/edit`">Edit</NuxtLink>
+            </Button>
+            <Button variant="outline" size="sm" as-child>
+              <NuxtLink :to="`/inboxes/${inbox.id}/runs`">Runs</NuxtLink>
+            </Button>
             <Button
               variant="outline"
               size="sm"
