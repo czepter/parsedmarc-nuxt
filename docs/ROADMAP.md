@@ -168,10 +168,10 @@
 
 **Exit criteria**
 
-- [ ] `/domains/[name]` (PRD J3.R1)
-- [ ] `/ips/[ip]` (PRD J3.R2)
-- [ ] `/forensics/[id]` with raw EML toggle and PII indicator (PRD J3.R3)
-- [ ] Global search (PRD J3.R4) — debounced 300ms, grouped results, keyboard nav
+- [x] `/domains/[name]` (PRD J3.R1)
+- [x] `/ips/[ip]` (PRD J3.R2)
+- [x] `/forensics/[id]` with raw EML toggle and PII indicator (PRD J3.R3)
+- [x] Global search (PRD J3.R4) — debounced 300ms, grouped results, keyboard nav
 
 **Satisfies.** PRD J3.R1–R4.
 

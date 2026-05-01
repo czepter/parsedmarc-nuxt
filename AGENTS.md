@@ -266,7 +266,7 @@ Owner of all items below: the first implementation PR(s).
 - [x] Forensic report parser (`lib/dmarc/forensic.ts`)
 - [x] Inbox admin UI (`app/pages/inboxes/`)
 - [x] Dashboard (summary tiles + hero chart + records table)
-- [ ] Domain detail view
+- [x] Domain detail view
 - [ ] Dark mode
 - [ ] Dockerfile + compose example
 - [ ] CI (lint, typecheck, test)
