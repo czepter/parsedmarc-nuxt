@@ -97,4 +97,62 @@ describe('lookupIp', () => {
     expect(result).toBeNull()
     expect(mockUpsert).not.toHaveBeenCalled()
   })
+
+  it('returns partial result when Reader response is missing optional fields', async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const fakeReader = {
+      get: vi.fn().mockReturnValue({
+        country: { iso_code: 'US' },
+        // city and location intentionally omitted — real MaxMind may omit these
+      }),
+    } as any
+    mockGetReader.mockReturnValueOnce(fakeReader)
+    mockUpsert.mockResolvedValueOnce({
+      id: 'geo3',
+      ip: '1.1.1.1',
+      country: 'US',
+      city: null,
+      latitude: null,
+      longitude: null,
+      lookedUpAt: new Date(),
+    } as any)
+
+    const result = await lookupIp('1.1.1.1')
+
+    expect(mockUpsert).toHaveBeenCalledWith({
+      where: { ip: '1.1.1.1' },
+      create: { ip: '1.1.1.1', country: 'US', city: null, latitude: null, longitude: null },
+      update: { country: 'US', city: null, latitude: null, longitude: null, lookedUpAt: expect.any(Date) },
+    })
+    expect(result).toEqual({ country: 'US', city: null, lat: null, lon: null })
+  })
+
+  it('returns null for optional fields when Reader omits them entirely', async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const fakeReader = {
+      get: vi.fn().mockReturnValue({
+        country: {},
+        // all optional fields entirely missing
+      }),
+    } as any
+    mockGetReader.mockReturnValueOnce(fakeReader)
+    mockUpsert.mockResolvedValueOnce({
+      id: 'geo4',
+      ip: '2.2.2.2',
+      country: null,
+      city: null,
+      latitude: null,
+      longitude: null,
+      lookedUpAt: new Date(),
+    } as any)
+
+    const result = await lookupIp('2.2.2.2')
+
+    expect(mockUpsert).toHaveBeenCalledWith({
+      where: { ip: '2.2.2.2' },
+      create: { ip: '2.2.2.2', country: null, city: null, latitude: null, longitude: null },
+      update: { country: null, city: null, latitude: null, longitude: null, lookedUpAt: expect.any(Date) },
+    })
+    expect(result).toEqual({ country: null, city: null, lat: null, lon: null })
+  })
 })
