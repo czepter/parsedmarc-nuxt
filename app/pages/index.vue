@@ -93,6 +93,7 @@ function fmtPercent(n: number): string {
   return `${n.toFixed(1)}%`
 }
 
+const tableOpen = ref(false)
 </script>
 
 <template>
@@ -101,21 +102,19 @@ function fmtPercent(n: number): string {
     <!-- Header row -->
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="text-2xl font-semibold">Dashboard</h1>
-      <div class="flex gap-1 rounded-md border p-1">
-        <button
+      <ToggleGroup
+        type="single"
+        :model-value="selectedWindow"
+        variant="outline"
+        @update:model-value="v => v && setWindow(v as WindowKey)"
+      >
+        <ToggleGroupItem
           v-for="w in (['24h', '7d', '30d', '90d'] as const)"
           :key="w"
-          :class="[
-            'rounded px-3 py-1 text-sm font-medium transition-colors',
-            selectedWindow === w
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          ]"
-          @click="setWindow(w)"
-        >
-          {{ w }}
-        </button>
-      </div>
+          :value="w"
+          class="px-3 py-1 text-sm"
+        >{{ w }}</ToggleGroupItem>
+      </ToggleGroup>
     </div>
 
     <!-- Summary tiles -->
@@ -123,45 +122,32 @@ function fmtPercent(n: number): string {
       v-if="statsStatus === 'success' && stats"
       class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5"
     >
-      <Card class="p-4">
-        <CardContent class="p-0 space-y-1">
-          <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Total Messages</p>
-          <p class="text-2xl font-bold">{{ fmtNumber(stats.current.totalMessages) }}</p>
-          <p class="text-muted-foreground text-xs">{{ fmtDelta(stats.current.totalMessages, stats.previous.totalMessages) }}</p>
-        </CardContent>
-      </Card>
-
-      <Card class="p-4">
-        <CardContent class="p-0 space-y-1">
-          <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">DMARC Pass Rate</p>
-          <p class="text-2xl font-bold">{{ fmtPercent(stats.current.passRate) }}</p>
-          <p class="text-muted-foreground text-xs">{{ fmtDelta(stats.current.passRate, stats.previous.passRate, 'pp') }}</p>
-        </CardContent>
-      </Card>
-
-      <Card class="p-4">
-        <CardContent class="p-0 space-y-1">
-          <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Top Source IP</p>
-          <p class="truncate font-mono text-lg font-bold">{{ stats.current.topSourceIp ?? '—' }}</p>
-          <p class="text-muted-foreground text-xs">by message count</p>
-        </CardContent>
-      </Card>
-
-      <Card class="p-4">
-        <CardContent class="p-0 space-y-1">
-          <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Top Country</p>
-          <p class="text-2xl font-bold">{{ stats.current.topCountry ?? '—' }}</p>
-          <p class="text-muted-foreground text-xs">by message count</p>
-        </CardContent>
-      </Card>
-
-      <Card class="p-4">
-        <CardContent class="p-0 space-y-1">
-          <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Distinct IPs</p>
-          <p class="text-2xl font-bold">{{ fmtNumber(stats.current.distinctIps) }}</p>
-          <p class="text-muted-foreground text-xs">{{ fmtDelta(stats.current.distinctIps, stats.previous.distinctIps) }}</p>
-        </CardContent>
-      </Card>
+      <StatCard
+        label="Total Messages"
+        :value="fmtNumber(stats.current.totalMessages)"
+        :delta="fmtDelta(stats.current.totalMessages, stats.previous.totalMessages)"
+      />
+      <StatCard
+        label="DMARC Pass Rate"
+        :value="fmtPercent(stats.current.passRate)"
+        :delta="fmtDelta(stats.current.passRate, stats.previous.passRate, 'pp')"
+      />
+      <StatCard
+        label="Top Source IP"
+        :value="stats.current.topSourceIp ?? '—'"
+        subtitle="by message count"
+        :mono="true"
+      />
+      <StatCard
+        label="Top Country"
+        :value="stats.current.topCountry ?? '—'"
+        subtitle="by message count"
+      />
+      <StatCard
+        label="Distinct IPs"
+        :value="fmtNumber(stats.current.distinctIps)"
+        :delta="fmtDelta(stats.current.distinctIps, stats.previous.distinctIps)"
+      />
     </div>
 
     <!-- Tiles skeleton -->
@@ -169,7 +155,7 @@ function fmtPercent(n: number): string {
       v-else-if="statsStatus === 'pending'"
       class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5"
     >
-      <Card v-for="i in 5" :key="i" class="h-24 animate-pulse bg-muted p-4" />
+      <StatCard v-for="i in 5" :key="i" :loading="true" label="" value="" />
     </div>
 
     <!-- Hero chart -->
@@ -201,31 +187,35 @@ function fmtPercent(n: number): string {
             </div>
           </ClientOnly>
         </div>
-        <details class="mt-2">
-          <summary class="text-muted-foreground cursor-pointer text-xs underline">
-            View as data table
-          </summary>
-          <div class="mt-2 overflow-auto">
-            <table class="text-xs" v-if="timeseries">
-              <thead>
-                <tr>
-                  <th class="pr-4 text-left">Bucket</th>
-                  <th class="pr-4 text-right">Pass</th>
-                  <th class="pr-4 text-right">Quarantine</th>
-                  <th class="text-right">Reject</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(ts, i) in timeseries.timestamps" :key="ts">
-                  <td class="pr-4">{{ new Date(ts * 1000).toLocaleString() }}</td>
-                  <td class="pr-4 text-right">{{ timeseries.none[i] }}</td>
-                  <td class="pr-4 text-right">{{ timeseries.quarantine[i] }}</td>
-                  <td class="text-right">{{ timeseries.reject[i] }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </details>
+        <Collapsible v-model:open="tableOpen" class="mt-2">
+          <CollapsibleTrigger as-child>
+            <Button variant="ghost" size="sm" class="text-xs text-muted-foreground px-0">
+              View as data table
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div class="mt-2 overflow-auto">
+              <table class="text-xs" v-if="timeseries">
+                <thead>
+                  <tr>
+                    <th class="pr-4 text-left">Bucket</th>
+                    <th class="pr-4 text-right">Pass</th>
+                    <th class="pr-4 text-right">Quarantine</th>
+                    <th class="text-right">Reject</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(ts, i) in timeseries.timestamps" :key="ts">
+                    <td class="pr-4">{{ new Date(ts * 1000).toLocaleString() }}</td>
+                    <td class="pr-4 text-right">{{ timeseries.none[i] }}</td>
+                    <td class="pr-4 text-right">{{ timeseries.quarantine[i] }}</td>
+                    <td class="text-right">{{ timeseries.reject[i] }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
 
