@@ -28,8 +28,8 @@ async function submit() {
     await navigateTo('/inboxes')
   }
   catch (e: unknown) {
-    const err = e as { statusMessage?: string }
-    error.value = err.statusMessage ?? 'Failed to create inbox'
+    const err = e as { data?: { statusMessage?: string } }
+    error.value = err.data?.statusMessage ?? 'Failed to create inbox'
   }
   finally {
     loading.value = false
