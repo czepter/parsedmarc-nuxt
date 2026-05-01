@@ -85,12 +85,12 @@
 
 **Exit criteria**
 
-- [ ] `app/server/plugins/geoip-bootstrap.ts` written: checks `data/GeoLite2-City.mmdb`, downloads from MaxMind on miss / age > 35d, instantiates and caches the `Reader`
-- [ ] `lib/geoip/lookup.ts` exposes `lookupIp(ip)` returning `{ country, city, lat, lon } | null`, reading from cache table first
-- [ ] `app/server/plugins/scheduler.ts` written: registers a no-op croner job at start as a smoke test, plus a monthly MMDB-refresh job (`0 4 1 * *`)
-- [ ] Server starts cleanly with `MAXMIND_LICENSE_KEY` set; logs warning (not error) if unset
-- [ ] Server starts cleanly even if MaxMind is unreachable (downloads are best-effort, lookups return `null` until file exists) — NFR-R3
-- [ ] Unit tests for `lib/geoip/lookup.ts` using a fixture MMDB
+- [x] `app/server/plugins/geoip-bootstrap.ts` written: checks `data/GeoLite2-City.mmdb`, downloads from MaxMind on miss / age > 35d, instantiates and caches the `Reader`
+- [x] `lib/geoip/lookup.ts` exposes `lookupIp(ip)` returning `{ country, city, lat, lon } | null`, reading from cache table first
+- [x] `app/server/plugins/scheduler.ts` written: registers a no-op croner job at start as a smoke test, plus a monthly MMDB-refresh job (`0 4 1 * *`)
+- [x] Server starts cleanly with `MAXMIND_LICENSE_KEY` set; logs warning (not error) if unset
+- [x] Server starts cleanly even if MaxMind is unreachable (downloads are best-effort, lookups return `null` until file exists) — NFR-R3
+- [x] Unit tests for `lib/geoip/lookup.ts` using a fixture MMDB
 
 **Satisfies.** AGENTS.md known gaps 5, 6; PRD NFR-P3, NFR-R3.
 
