@@ -37,7 +37,8 @@ export function useWindowFilter() {
     return { from: to - WINDOWS[selectedWindow.value], to }
   })
 
-  function setWindow(w: WindowKey, opts?: { resetPage?: boolean }) {
+  function setWindow(w: string, opts?: { resetPage?: boolean }) {
+    if (!WINDOW_KEYS.includes(w as WindowKey)) return
     router.push({
       query: {
         ...route.query,
@@ -47,7 +48,7 @@ export function useWindowFilter() {
     })
     // Only explicit toggle clicks write to DB; URL-driven changes (bookmarks,
     // deep links) do not, so the saved preference stays intentional.
-    persistWindow(w)
+    persistWindow(w as WindowKey)
   }
 
   return { selectedWindow, timeRange, setWindow, WINDOW_KEYS }
