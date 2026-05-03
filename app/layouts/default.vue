@@ -29,7 +29,7 @@ async function logout() {
     <header class="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div class="mx-auto flex h-12 max-w-7xl items-center gap-6 px-6">
         <!-- Brand -->
-        <NuxtLink to="/" class="text-sm font-semibold tracking-tight">
+        <NuxtLink to="/" class="text-sm font-semibold tracking-tight text-primary">
           parsedmarc
         </NuxtLink>
 
@@ -40,7 +40,7 @@ async function logout() {
             :class="[
               'transition-colors',
               route.path === '/'
-                ? 'text-foreground font-medium'
+                ? 'text-primary font-medium'
                 : 'text-muted-foreground hover:text-foreground',
             ]"
           >
@@ -51,7 +51,7 @@ async function logout() {
             :class="[
               'transition-colors',
               isActive('/records')
-                ? 'text-foreground font-medium'
+                ? 'text-primary font-medium'
                 : 'text-muted-foreground hover:text-foreground',
             ]"
           >
@@ -62,7 +62,7 @@ async function logout() {
             :class="[
               'transition-colors',
               isActive('/inboxes')
-                ? 'text-foreground font-medium'
+                ? 'text-primary font-medium'
                 : 'text-muted-foreground hover:text-foreground',
             ]"
           >
@@ -73,7 +73,7 @@ async function logout() {
             :class="[
               'transition-colors',
               isActive('/domains')
-                ? 'text-foreground font-medium'
+                ? 'text-primary font-medium'
                 : 'text-muted-foreground hover:text-foreground',
             ]"
           >
@@ -84,7 +84,7 @@ async function logout() {
             :class="[
               'transition-colors',
               isActive('/settings')
-                ? 'text-foreground font-medium'
+                ? 'text-primary font-medium'
                 : 'text-muted-foreground hover:text-foreground',
             ]"
           >
