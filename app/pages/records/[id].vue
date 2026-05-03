@@ -360,7 +360,13 @@ function policyAlignLabel(alignment: string | null): string {
           <!-- SPF card -->
           <Card>
             <CardContent class="pt-4">
-              <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">SPF</p>
+              <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                SPF
+                <template v-if="data.spfAuthDomain">
+                  <span class="font-normal normal-case mx-1">·</span>
+                  <span class="font-mono font-normal normal-case">{{ data.spfAuthDomain }}</span>
+                </template>
+              </p>
               <div class="divide-y divide-border">
 
                 <!-- Authentication -->
