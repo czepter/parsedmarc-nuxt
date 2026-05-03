@@ -15,6 +15,9 @@ interface RecordRow {
   headerFrom: string
   dkim: string
   spf: string
+  spfAuthResult: string | null
+  dkimAuthResult: string | null
+  dmarcCompliant: boolean
 }
 
 interface RecordsResponse {
@@ -85,6 +88,8 @@ export default defineEventHandler(async (event): Promise<RecordsResponse> => {
         headerFrom: true,
         dkim: true,
         spf: true,
+        spfAuthResult: true,
+        dkimAuthResult: true,
         report: {
           select: { dateBegin: true },
         },
@@ -106,6 +111,9 @@ export default defineEventHandler(async (event): Promise<RecordsResponse> => {
     headerFrom: r.headerFrom,
     dkim: r.dkim,
     spf: r.spf,
+    spfAuthResult: r.spfAuthResult,
+    dkimAuthResult: r.dkimAuthResult,
+    dmarcCompliant: r.dkim === 'pass' || r.spf === 'pass',
   }))
 
   return {

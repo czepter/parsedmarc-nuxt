@@ -15,23 +15,23 @@ interface StatsResponse {
 }
 
 async function computeTiles(fromMs: number, toMs: number): Promise<TileData> {
-  // 1. Total messages + pass count in a single groupBy
-  const dispositionGroups = await prisma.aggregateRecord.groupBy({
-    by: ['disposition'],
-    where: {
-      report: {
-        dateBegin: { gte: new Date(fromMs), lt: new Date(toMs) },
-      },
-    },
-    _sum: { count: true },
-  })
+  // Prisma stores DateTime as ISO text in SQLite — compare with ISO strings, not unix ms.
+  const fromIso = new Date(fromMs).toISOString()
+  const toIso = new Date(toMs).toISOString()
 
-  const totalMessages = dispositionGroups.reduce(
-    (acc, g) => acc + (g._sum.count ?? 0),
-    0,
-  )
-  const noneMessages = dispositionGroups.find(g => g.disposition === 'none')?._sum.count ?? 0
-  const passRate = totalMessages > 0 ? (noneMessages / totalMessages) * 100 : 0
+  // 1. True DMARC compliance rate: a record passes DMARC if either SPF or DKIM alignment passed.
+  //    Prisma groupBy cannot express OR conditions across columns, so we use $queryRaw.
+  const complianceRows = await prisma.$queryRaw<Array<{ passing: number; total: number }>>`
+    SELECT
+      SUM(CASE WHEN ar.dkim = 'pass' OR ar.spf = 'pass' THEN ar.count ELSE 0 END) as passing,
+      SUM(ar.count) as total
+    FROM AggregateRecord ar
+    JOIN AggregateReport rep ON rep.id = ar.reportId
+    WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
+  `
+  const totalMessages = Number(complianceRows[0]?.total ?? 0)
+  const passingMessages = Number(complianceRows[0]?.passing ?? 0)
+  const passRate = totalMessages > 0 ? (passingMessages / totalMessages) * 100 : 0
 
   // 2. Top source IP by sum of count
   const ipGroups = await prisma.aggregateRecord.groupBy({
@@ -57,10 +57,7 @@ async function computeTiles(fromMs: number, toMs: number): Promise<TileData> {
     },
   })
 
-  // 4. Top country via GeoLocation join — use $queryRaw for the join aggregation
-  // Prisma stores DateTime as ISO text in SQLite — compare with ISO strings, not unix ms.
-  const fromIso = new Date(fromMs).toISOString()
-  const toIso = new Date(toMs).toISOString()
+  // 4. Top country via GeoLocation join
   const countryRows = await prisma.$queryRaw<Array<{ country: string | null; total: number }>>`
     SELECT gl.country, SUM(ar.count) as total
     FROM AggregateRecord ar
