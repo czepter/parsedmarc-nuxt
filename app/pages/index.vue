@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { WindowKey } from '~/types/preferences'
+
 definePageMeta({ layout: 'default' })
 // ── types ─────────────────────────────────────────────────────────────────
 interface TileData {
@@ -23,40 +25,11 @@ interface TimeseriesResponse {
 interface CountryItem { code: string | null; name: string | null; count: number; share: number }
 interface SourceIpItem { ip: string; country: string | null; count: number; share: number; passRate: number }
 interface HeaderFromItem { domain: string; count: number; share: number; passRate: number }
+interface ReportingOrgItem { orgName: string; count: number; share: number }
 interface AuthDimension { pass: number; fail: number; total: number }
-// ── URL state ──────────────────────────────────────────────────────────────
+// ── URL state + window persistence ────────────────────────────────────────
 const route = useRoute()
-const router = useRouter()
-
-type WindowKey = '24h' | '7d' | '30d' | '90d'
-const WINDOWS: Record<WindowKey, number> = {
-  '24h': 86400,
-  '7d': 7 * 86400,
-  '30d': 30 * 86400,
-  '90d': 90 * 86400,
-}
-
-const selectedWindow = computed<WindowKey>(() => {
-  const w = route.query.window as string
-  return (Object.keys(WINDOWS) as WindowKey[]).includes(w as WindowKey)
-    ? (w as WindowKey)
-    : '7d'
-})
-
-function nowSeconds() {
-  return Math.floor(Date.now() / 1000)
-}
-
-const timeRange = computed(() => {
-  const to = nowSeconds()
-  const from = to - WINDOWS[selectedWindow.value]
-  return { from, to }
-})
-
-// ── navigate helpers ───────────────────────────────────────────────────────
-function setWindow(w: WindowKey) {
-  router.push({ query: { ...route.query, window: w, page: 1 } })
-}
+const { selectedWindow, timeRange, setWindow } = useWindowFilter()
 
 // ── data fetching ──────────────────────────────────────────────────────────
 const statsKey = computed(
@@ -79,15 +52,17 @@ const {
 const countriesKey = computed(() => `/api/dashboard/countries?from=${timeRange.value.from}&to=${timeRange.value.to}`)
 const sourceIpsKey = computed(() => `/api/dashboard/source-ips?from=${timeRange.value.from}&to=${timeRange.value.to}`)
 const headerFromKey = computed(() => `/api/dashboard/header-from?from=${timeRange.value.from}&to=${timeRange.value.to}`)
+const reportingOrgsKey = computed(() => `/api/dashboard/reporting-orgs?from=${timeRange.value.from}&to=${timeRange.value.to}`)
 const authKey = computed(() => `/api/dashboard/auth?from=${timeRange.value.from}&to=${timeRange.value.to}`)
 
 const { data: countriesData, status: countriesStatus, refresh: refreshCountries } = await useFetch<{ countries: CountryItem[] }>(countriesKey, { watch: false, key: countriesKey })
 const { data: sourceIpsData, status: sourceIpsStatus, refresh: refreshSourceIps } = await useFetch<{ ips: SourceIpItem[] }>(sourceIpsKey, { watch: false, key: sourceIpsKey })
 const { data: headerFromData, status: headerFromStatus, refresh: refreshHeaderFrom } = await useFetch<{ domains: HeaderFromItem[] }>(headerFromKey, { watch: false, key: headerFromKey })
+const { data: reportingOrgsData, status: reportingOrgsStatus, refresh: refreshReportingOrgs } = await useFetch<{ orgs: ReportingOrgItem[] }>(reportingOrgsKey, { watch: false, key: reportingOrgsKey })
 const { data: authData, status: authStatus, refresh: refreshAuth } = await useFetch<{ dkim: AuthDimension; spf: AuthDimension }>(authKey, { watch: false, key: authKey })
 
 const heatmapKey = computed(() => `/api/dashboard/heatmap?from=${timeRange.value.from}&to=${timeRange.value.to}`)
-const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ matrix: number[][] }>(heatmapKey, { watch: false, key: heatmapKey })
+const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ entries: Array<{ date: string; dow: number; total: number }> }>(heatmapKey, { watch: false, key: heatmapKey })
 
 watch(selectedWindow, () => {
   refreshStats()
@@ -95,8 +70,41 @@ watch(selectedWindow, () => {
   refreshCountries()
   refreshSourceIps()
   refreshHeaderFrom()
+  refreshReportingOrgs()
   refreshAuth()
   refreshHeatmap()
+})
+
+// ── combined Orgs/IPs card toggle ──────────────────────────────────────────
+type SourceView = 'orgs' | 'ips'
+const sourceView = ref<SourceView>('orgs')
+
+const sourceTitle = computed(() =>
+  sourceView.value === 'orgs' ? 'Top Reporting Organizations' : 'Top Source IPs',
+)
+const sourceSubtitle = computed(() =>
+  sourceView.value === 'orgs' ? 'who sent the DMARC reports' : 'by message count',
+)
+const sourceLoading = computed(() =>
+  sourceView.value === 'orgs'
+    ? reportingOrgsStatus.value === 'pending'
+    : sourceIpsStatus.value === 'pending',
+)
+const sourceItems = computed(() => {
+  if (sourceView.value === 'orgs') {
+    return (reportingOrgsData.value?.orgs ?? []).map(o => ({
+      label: o.orgName,
+      count: o.count,
+      share: o.share,
+    }))
+  }
+  return (sourceIpsData.value?.ips ?? []).map(ip => ({
+    label: ip.ip,
+    sublabel: ip.country ?? undefined,
+    count: ip.count,
+    share: ip.share,
+    href: `/ips/${encodeURIComponent(ip.ip)}`,
+  }))
 })
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -108,38 +116,15 @@ function fmtDelta(current: number, previous: number, unit = ''): string {
 }
 
 function fmtNumber(n: number): string {
-  return n.toLocaleString()
+  return Intl.NumberFormat('en-US').format(n)
 }
 
 function fmtPercent(n: number): string {
   return `${n.toFixed(1)}%`
 }
 
-// ── country flag helper ────────────────────────────────────────────────────
-const COUNTRY_CODE_MAP: Record<string, string> = {
-  'United States': 'US', 'Germany': 'DE', 'France': 'FR', 'United Kingdom': 'GB',
-  'Netherlands': 'NL', 'Russia': 'RU', 'China': 'CN', 'Japan': 'JP',
-  'Canada': 'CA', 'Australia': 'AU', 'Brazil': 'BR', 'India': 'IN',
-  'South Korea': 'KR', 'Italy': 'IT', 'Spain': 'ES', 'Poland': 'PL',
-  'Sweden': 'SE', 'Switzerland': 'CH', 'Czech Republic': 'CZ', 'Austria': 'AT',
-  'Belgium': 'BE', 'Denmark': 'DK', 'Finland': 'FI', 'Norway': 'NO',
-  'Portugal': 'PT', 'Singapore': 'SG', 'Hong Kong': 'HK', 'Taiwan': 'TW',
-  'Mexico': 'MX', 'Argentina': 'AR', 'South Africa': 'ZA', 'Turkey': 'TR',
-  'Ukraine': 'UA', 'Romania': 'RO', 'Hungary': 'HU', 'Bulgaria': 'BG',
-  'Greece': 'GR', 'Israel': 'IL', 'Saudi Arabia': 'SA', 'United Arab Emirates': 'AE',
-  'Indonesia': 'ID', 'Thailand': 'TH', 'Vietnam': 'VN', 'Malaysia': 'MY',
-  'Philippines': 'PH', 'New Zealand': 'NZ', 'Ireland': 'IE', 'Slovakia': 'SK',
-}
+// countryName() and countryFlag() are auto-imported from app/utils/countryNames.ts
 
-function countryFlag(name: string): string | undefined {
-  const code = COUNTRY_CODE_MAP[name]
-  if (!code) return undefined
-  return String.fromCodePoint(
-    ...code.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65),
-  )
-}
-
-const tableOpen = ref(false)
 </script>
 
 <template>
@@ -230,52 +215,25 @@ const tableOpen = ref(false)
             </div>
           </ClientOnly>
         </div>
-        <Collapsible v-model:open="tableOpen" class="mt-2">
-          <CollapsibleTrigger as-child>
-            <Button variant="ghost" size="sm" class="text-xs text-muted-foreground px-0">
-              View as data table
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div class="mt-2 overflow-auto">
-              <table class="text-xs" v-if="timeseries">
-                <thead>
-                  <tr>
-                    <th class="pr-4 text-left">Bucket</th>
-                    <th class="pr-4 text-right">Pass</th>
-                    <th class="pr-4 text-right">Quarantine</th>
-                    <th class="text-right">Reject</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(ts, i) in timeseries.timestamps" :key="ts">
-                    <td class="pr-4">{{ new Date(ts * 1000).toLocaleString() }}</td>
-                    <td class="pr-4 text-right">{{ timeseries.none[i] }}</td>
-                    <td class="pr-4 text-right">{{ timeseries.quarantine[i] }}</td>
-                    <td class="text-right">{{ timeseries.reject[i] }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
       </CardContent>
     </Card>
 
     <!-- Breakdown Row 1 -->
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <!-- Top Source IPs -->
-      <SectionCard title="Top Source IPs" subtitle="by message count">
-        <TopList
-          :loading="sourceIpsStatus === 'pending'"
-          :items="(sourceIpsData?.ips ?? []).map(ip => ({
-            label: ip.ip,
-            sublabel: ip.country ?? undefined,
-            count: ip.count,
-            share: ip.share,
-            href: `/ips/${encodeURIComponent(ip.ip)}`,
-          }))"
-        />
+      <!-- Combined Orgs / Source IPs with toggle -->
+      <SectionCard :title="sourceTitle" :subtitle="sourceSubtitle">
+        <template #header-action>
+          <ToggleGroup
+            type="single"
+            :model-value="sourceView"
+            variant="outline"
+            @update:model-value="v => v && (sourceView = v as SourceView)"
+          >
+            <ToggleGroupItem value="orgs" class="px-2 py-1 text-xs">Orgs</ToggleGroupItem>
+            <ToggleGroupItem value="ips" class="px-2 py-1 text-xs">IPs</ToggleGroupItem>
+          </ToggleGroup>
+        </template>
+        <TopList :loading="sourceLoading" :items="sourceItems" />
       </SectionCard>
 
       <!-- Top From Domains -->
@@ -297,11 +255,10 @@ const tableOpen = ref(false)
       <!-- Authentication -->
       <SectionCard title="Authentication" subtitle="DKIM & SPF results">
         <AuthBreakdown
-          v-if="authStatus === 'success' && authData"
-          :dkim="authData.dkim"
-          :spf="authData.spf"
+          :loading="authStatus !== 'success' || !authData"
+          :dkim="authData?.dkim ?? { pass: 0, fail: 0, total: 0 }"
+          :spf="authData?.spf ?? { pass: 0, fail: 0, total: 0 }"
         />
-        <AuthBreakdown v-else :loading="true" :dkim="{ pass: 0, fail: 0, total: 0 }" :spf="{ pass: 0, fail: 0, total: 0 }" />
       </SectionCard>
 
       <!-- Top Countries -->
@@ -309,10 +266,10 @@ const tableOpen = ref(false)
         <TopList
           :loading="countriesStatus === 'pending'"
           :items="(countriesData?.countries ?? []).map(c => ({
-            label: c.name ?? 'Unknown',
+            label: countryName(c.name),
             count: c.count,
             share: c.share,
-            flag: c.name ? countryFlag(c.name) : undefined,
+            flag: countryFlag(c.name),
           }))"
         />
       </SectionCard>
@@ -330,13 +287,15 @@ const tableOpen = ref(false)
         </ClientOnly>
       </SectionCard>
 
-      <SectionCard title="Activity Heatmap" subtitle="messages by weekday &amp; hour">
+      <SectionCard title="Activity Heatmap" subtitle="messages by day &amp; weekday">
         <ClientOnly>
           <HeatMap
             v-if="heatmapStatus === 'success' && heatmapData"
-            :matrix="heatmapData.matrix"
+            :entries="heatmapData.entries"
+            :from="timeRange.from"
+            :to="timeRange.to"
           />
-          <Skeleton v-else class="h-[140px] w-full rounded-md" />
+          <Skeleton v-else class="h-[130px] w-full rounded-md" />
         </ClientOnly>
       </SectionCard>
     </div>

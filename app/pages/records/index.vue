@@ -103,6 +103,77 @@ const syncHeaderFromToUrl = useDebounceFn((val: string) => {
 watch(ipSearch, syncIpToUrl)
 watch(headerFromSearch, syncHeaderFromToUrl)
 
+// ── sessionStorage: persist records filters within the tab's lifetime ─────
+// window= is deliberately excluded — DB owns that preference.
+const SS_KEY = 'records-filters'
+
+interface RecordsFilters {
+  sort?: 'time' | 'count'
+  order?: 'asc' | 'desc'
+  disposition?: string
+  dkim?: string
+  spf?: string
+  ip?: string
+  headerFrom?: string
+  page?: number
+}
+
+// On mount: if the URL carries none of the records-specific params, restore
+// from sessionStorage (URL always wins when params are already present).
+onMounted(() => {
+  const urlHasFilters = route.query.sort || route.query.order || route.query.disposition
+    || route.query.dkim || route.query.spf || route.query.ip
+    || route.query.headerFrom || route.query.page
+  if (urlHasFilters) return
+
+  try {
+    const stored = sessionStorage.getItem(SS_KEY)
+    if (!stored) return
+    const parsed = JSON.parse(stored) as RecordsFilters
+    const restored: Record<string, string | number> = {}
+    if (parsed.sort) restored.sort = parsed.sort
+    if (parsed.order) restored.order = parsed.order
+    if (parsed.disposition) restored.disposition = parsed.disposition
+    if (parsed.dkim) restored.dkim = parsed.dkim
+    if (parsed.spf) restored.spf = parsed.spf
+    if (parsed.ip) restored.ip = parsed.ip
+    if (parsed.headerFrom) restored.headerFrom = parsed.headerFrom
+    // Skip page=1 — restoring the first page is no different from default
+    if (parsed.page && parsed.page > 1) restored.page = parsed.page
+
+    if (Object.keys(restored).length > 0) {
+      router.replace({ query: { ...route.query, ...restored } })
+    }
+  }
+  catch {
+    // sessionStorage unavailable (private mode, quota exceeded) — silently skip.
+  }
+})
+
+// Mirror current URL state to sessionStorage on every route.query change.
+watch(
+  () => route.query,
+  (q) => {
+    try {
+      const snapshot: RecordsFilters = {
+        sort: q.sort as RecordsFilters['sort'],
+        order: q.order as RecordsFilters['order'],
+        disposition: q.disposition as string | undefined,
+        dkim: q.dkim as string | undefined,
+        spf: q.spf as string | undefined,
+        ip: q.ip as string | undefined,
+        headerFrom: q.headerFrom as string | undefined,
+        page: q.page ? Number(q.page) : undefined,
+      }
+      sessionStorage.setItem(SS_KEY, JSON.stringify(snapshot))
+    }
+    catch {
+      // Silently ignore if sessionStorage is unavailable.
+    }
+  },
+  { deep: true },
+)
+
 // ── data fetching ──────────────────────────────────────────────────────────
 const recordsKey = computed(() => {
   let key =

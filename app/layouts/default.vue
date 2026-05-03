@@ -5,6 +5,13 @@ function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
+// Carry the current window= param when navigating between pages so the
+// active time range is never silently reset by a nav click.
+function navTo(path: string) {
+  const w = route.query.window
+  return w ? { path, query: { window: w } } : path
+}
+
 async function logout() {
   try {
     await $fetch('/api/auth/logout', { method: 'POST' })
@@ -29,7 +36,7 @@ async function logout() {
         <!-- Nav links -->
         <nav aria-label="Main navigation" class="flex items-center gap-4 text-sm">
           <NuxtLink
-            to="/"
+            :to="navTo('/')"
             :class="[
               'transition-colors',
               route.path === '/'
@@ -40,7 +47,7 @@ async function logout() {
             Dashboard
           </NuxtLink>
           <NuxtLink
-            to="/records"
+            :to="navTo('/records')"
             :class="[
               'transition-colors',
               isActive('/records')
@@ -51,7 +58,7 @@ async function logout() {
             Records
           </NuxtLink>
           <NuxtLink
-            to="/inboxes"
+            :to="navTo('/inboxes')"
             :class="[
               'transition-colors',
               isActive('/inboxes')
@@ -62,7 +69,7 @@ async function logout() {
             Inboxes
           </NuxtLink>
           <NuxtLink
-            to="/settings"
+            :to="navTo('/settings')"
             :class="[
               'transition-colors',
               isActive('/settings')
