@@ -51,33 +51,45 @@ model Domain {
 }
 
 model AggregateReport {
-  id        String            @id @default(cuid())
-  reportId  String            @unique
-  orgName   String
-  domainId  String
-  domain    Domain            @relation(fields: [domainId], references: [id])
-  dateBegin DateTime
-  dateEnd   DateTime
-  inboxId   String
-  inbox     Inbox             @relation(fields: [inboxId], references: [id], onDelete: Cascade)
-  rawXml    String
-  records   AggregateRecord[]
+  id          String            @id @default(cuid())
+  reportId    String            @unique
+  orgName     String
+  domainId    String
+  domain      Domain            @relation(fields: [domainId], references: [id])
+  dateBegin   DateTime
+  dateEnd     DateTime
+  inboxId     String
+  inbox       Inbox             @relation(fields: [inboxId], references: [id], onDelete: Cascade)
+  rawXml      String
+  records     AggregateRecord[]
+  // Published policy (from <policy_published> in the XML — added in v2)
+  policyP     String?
+  policySp    String?
+  policyAdkim String?
+  policyAspf  String?
+  policyPct   Int?
 
   @@index([domainId, dateBegin])
 }
 
 model AggregateRecord {
-  id            String          @id @default(cuid())
-  reportId      String
-  report        AggregateReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  sourceIp      String
-  count         Int
-  disposition   String
-  dkim          String
-  spf           String
-  headerFrom    String
-  geoLocationId String?
-  geoLocation   GeoLocation?    @relation(fields: [geoLocationId], references: [id])
+  id               String          @id @default(cuid())
+  reportId         String
+  report           AggregateReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sourceIp         String
+  count            Int
+  disposition      String
+  dkim             String
+  spf              String
+  headerFrom       String
+  geoLocationId    String?
+  geoLocation      GeoLocation?    @relation(fields: [geoLocationId], references: [id])
+  // Auth results (from <auth_results> in the XML — added in v2)
+  spfAuthDomain    String?
+  spfAuthResult    String?
+  dkimAuthDomain   String?
+  dkimAuthSelector String?
+  dkimAuthResult   String?
 
   @@index([reportId])
   @@index([sourceIp])
