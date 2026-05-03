@@ -17,6 +17,7 @@ interface RecordRow {
   spfAuthResult: string | null
   dkimAuthResult: string | null
   dmarcCompliant: boolean
+  reportOrgName: string
 }
 interface RecordsResponse {
   records: RecordRow[]
@@ -362,7 +363,7 @@ function resultClass(result: string | null): string {
             <TableHead>Status</TableHead>
             <TableHead>DKIM</TableHead>
             <TableHead>SPF</TableHead>
-            <TableHead class="text-right">Record</TableHead>
+            <TableHead class="text-right">Report</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -428,8 +429,8 @@ function resultClass(result: string | null): string {
                 >{{ record.spf }}</span>
               </TableCell>
               <TableCell class="text-right">
-                <Button variant="link" size="sm" class="h-auto p-0 font-mono text-[11px] text-muted-foreground hover:text-foreground" as-child>
-                  <NuxtLink :to="`/records/${record.id}`">{{ record.id.slice(0, 8) }} →</NuxtLink>
+                <Button variant="link" size="sm" class="h-auto p-0 text-[11px] text-muted-foreground hover:text-foreground" as-child>
+                  <NuxtLink :to="`/records/${record.id}`" :title="record.id">{{ record.reportOrgName }} →</NuxtLink>
                 </Button>
               </TableCell>
             </TableRow>

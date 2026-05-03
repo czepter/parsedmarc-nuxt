@@ -127,6 +127,7 @@ async function submit() {
               variant="outline"
               class="flex-1"
               :disabled="testStatus === 'loading' || loading || !form.host || !form.username || !form.password"
+              :title="(!form.host || !form.username || !form.password) ? 'Fill in host and credentials first' : undefined"
               @click="testConnection"
             >
               {{ testStatus === 'loading' ? 'Testing…' : 'Test Connection' }}

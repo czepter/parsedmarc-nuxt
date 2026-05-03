@@ -120,7 +120,7 @@ function fmtDelta(current: number, previous: number, unit = ''): string {
   if (previous === 0) return '—'
   const diff = current - previous
   const sign = diff >= 0 ? '+' : ''
-  return `${sign}${diff.toFixed(unit === 'pp' ? 1 : 0)}${unit}`
+  return `${sign}${diff.toFixed(unit === 'pts' ? 1 : 0)}${unit}`
 }
 
 function fmtNumber(n: number): string {
@@ -194,20 +194,20 @@ function fmtPercent(n: number): string {
       <StatCard
         label="Pass"
         :value="fmtPercent(stats.current.passRate)"
-        :delta="fmtDelta(stats.current.passRate, stats.previous.passRate, 'pp')"
+        :delta="fmtDelta(stats.current.passRate, stats.previous.passRate, 'pts')"
         subtitle="DMARC alignment passed"
       />
       <StatCard
         label="Misconfigured"
         :value="fmtPercent(stats.current.misconfiguredRate)"
-        :delta="fmtDelta(stats.current.misconfiguredRate, stats.previous.misconfiguredRate, 'pp')"
+        :delta="fmtDelta(stats.current.misconfiguredRate, stats.previous.misconfiguredRate, 'pts')"
         subtitle="Auth passed, alignment failed"
         :inverted="true"
       />
       <StatCard
         label="Spoofed"
         :value="fmtPercent(stats.current.spoofedRate)"
-        :delta="fmtDelta(stats.current.spoofedRate, stats.previous.spoofedRate, 'pp')"
+        :delta="fmtDelta(stats.current.spoofedRate, stats.previous.spoofedRate, 'pts')"
         subtitle="No authentication passed"
         :inverted="true"
       />

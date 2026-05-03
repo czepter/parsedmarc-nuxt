@@ -18,6 +18,7 @@ interface RecordRow {
   spfAuthResult: string | null
   dkimAuthResult: string | null
   dmarcCompliant: boolean
+  reportOrgName: string
 }
 
 interface RecordsResponse {
@@ -91,7 +92,7 @@ export default defineEventHandler(async (event): Promise<RecordsResponse> => {
         spfAuthResult: true,
         dkimAuthResult: true,
         report: {
-          select: { dateBegin: true },
+          select: { dateBegin: true, orgName: true },
         },
         geoLocation: {
           select: { country: true },
@@ -114,6 +115,7 @@ export default defineEventHandler(async (event): Promise<RecordsResponse> => {
     spfAuthResult: r.spfAuthResult,
     dkimAuthResult: r.dkimAuthResult,
     dmarcCompliant: r.dkim === 'pass' || r.spf === 'pass',
+    reportOrgName: r.report.orgName,
   }))
 
   return {

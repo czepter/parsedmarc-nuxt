@@ -40,7 +40,7 @@ const deltaInfo = computed(() => {
         <p :class="mono ? 'font-mono text-lg font-bold truncate' : 'text-2xl font-bold'">
           {{ value }}
         </p>
-        <div v-if="deltaInfo" :class="['flex items-center gap-1 text-sm font-medium', deltaInfo.colorClass]">
+        <div v-if="deltaInfo" :class="['flex items-center gap-1 text-sm font-medium', deltaInfo.colorClass]" title="vs previous period">
           <ArrowUp v-if="deltaInfo.up" class="size-3.5 shrink-0" />
           <ArrowDown v-else class="size-3.5 shrink-0" />
           <span>{{ deltaInfo.display }}</span>

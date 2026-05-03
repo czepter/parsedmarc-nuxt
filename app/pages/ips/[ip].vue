@@ -142,7 +142,7 @@ const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
           >
             <DispositionBadge :kind="(d.disposition as 'none' | 'quarantine' | 'reject')" />
             <span class="text-2xl font-bold mt-1">{{ d.pct.toFixed(1) }}%</span>
-            <span class="text-xs text-muted-foreground">{{ d.count.toLocaleString() }} msgs</span>
+            <span class="text-xs text-muted-foreground">{{ d.count.toLocaleString() }} {{ d.count === 1 ? 'msg' : 'msgs' }}</span>
           </div>
         </div>
       </div>

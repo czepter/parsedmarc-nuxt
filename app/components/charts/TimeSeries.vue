@@ -29,24 +29,29 @@ function buildOpts(width: number): import('uplot').Options {
     width,
     height: props.height,
     series: [
-      {},
+      {
+        value: (_u: unknown, v: number | null) => v == null ? '—' : new Date(v * 1000).toLocaleString(),
+      },
       {
         label: 'Pass (none)',
         stroke: '#22c55e',
         fill: '#22c55e26',
         width: 2,
+        value: (_u: unknown, v: number | null) => v == null ? '—' : String(v),
       },
       {
         label: 'Quarantine',
         stroke: '#f59e0b',
         fill: '#f59e0b26',
         width: 2,
+        value: (_u: unknown, v: number | null) => v == null ? '—' : String(v),
       },
       {
         label: 'Reject',
         stroke: '#ef4444',
         fill: '#ef444426',
         width: 2,
+        value: (_u: unknown, v: number | null) => v == null ? '—' : String(v),
       },
     ],
     axes: [
