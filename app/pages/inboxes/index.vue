@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { MoreHorizontal } from 'lucide-vue-next'
+
 definePageMeta({ layout: 'default' })
 const { data: inboxes, refresh, status, error } = await useFetch('/api/inboxes')
 
@@ -34,10 +36,45 @@ async function deleteInbox(id: string, label: string) {
     deletingId.value = null
   }
 }
+
+// ── Formatters ───────────────────────────────────────────────────────────────
+function relativeTime(d: string | Date | null | undefined): string {
+  if (!d) return '—'
+  const then = new Date(d).getTime()
+  const diffSec = Math.round((Date.now() - then) / 1000)
+  if (diffSec < 45) return 'just now'
+  if (diffSec < 90) return '1 min ago'
+  const diffMin = Math.round(diffSec / 60)
+  if (diffMin < 60) return `${diffMin} min ago`
+  const diffHr = Math.round(diffMin / 60)
+  if (diffHr < 24) return `${diffHr} hr ago`
+  const diffDay = Math.round(diffHr / 24)
+  if (diffDay < 30) return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`
+  const diffMo = Math.round(diffDay / 30)
+  if (diffMo < 12) return `${diffMo} mo ago`
+  return `${Math.round(diffMo / 12)} yr ago`
+}
+
+function absoluteTime(d: string | Date | null | undefined): string {
+  if (!d) return ''
+  return new Date(d).toLocaleString('en-US')
+}
+
+function successRateClass(rate: number | null): string {
+  if (rate === null) return 'text-muted-foreground'
+  if (rate >= 0.95) return 'text-emerald-600 dark:text-emerald-400'
+  if (rate >= 0.8) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-600 dark:text-red-400'
+}
+
+function dotClass(ok: boolean | null): string {
+  if (ok === null) return 'bg-muted-foreground/40'
+  return ok ? 'bg-emerald-500' : 'bg-red-500'
+}
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl space-y-6 p-6">
+  <div class="mx-auto max-w-6xl space-y-6 p-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold">Inboxes</h1>
       <Button variant="outline" size="sm" as-child>
@@ -59,6 +96,9 @@ async function deleteInbox(id: string, label: string) {
           <TableHead>Label</TableHead>
           <TableHead>Host</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead class="text-right">Messages</TableHead>
+          <TableHead>Last Run</TableHead>
+          <TableHead class="text-right">Success Rate</TableHead>
           <TableHead class="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -74,28 +114,52 @@ async function deleteInbox(id: string, label: string) {
               {{ inbox.enabled ? 'Active' : 'Disabled' }}
             </Badge>
           </TableCell>
-          <TableCell class="space-x-2 text-right">
-            <Button variant="outline" size="sm" as-child>
-              <NuxtLink :to="`/inboxes/${inbox.id}/edit`">Edit</NuxtLink>
-            </Button>
-            <Button variant="outline" size="sm" as-child>
-              <NuxtLink :to="`/inboxes/${inbox.id}/runs`">Runs</NuxtLink>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="openScanDrawer(inbox.id, inbox.label)"
-            >
-              Scan Now
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              :disabled="deletingId === inbox.id"
-              @click="deleteInbox(inbox.id, inbox.label)"
-            >
-              Delete
-            </Button>
+          <TableCell class="text-right tabular-nums">
+            {{ (inbox.messagesSeen ?? 0).toLocaleString('en-US') }}
+          </TableCell>
+          <TableCell>
+            <div class="flex items-center gap-2">
+              <span
+                class="inline-block size-2 rounded-full"
+                :class="dotClass(inbox.lastRunOk)"
+                aria-hidden="true"
+              />
+              <span class="text-sm" :title="absoluteTime(inbox.lastRunAt)">
+                {{ relativeTime(inbox.lastRunAt) }}
+              </span>
+            </div>
+          </TableCell>
+          <TableCell class="text-right tabular-nums" :class="successRateClass(inbox.successRate)">
+            <template v-if="inbox.successRate === null">—</template>
+            <template v-else>{{ Math.round(inbox.successRate * 100) }}%</template>
+          </TableCell>
+          <TableCell class="text-right">
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button variant="ghost" size="icon" aria-label="Actions">
+                  <MoreHorizontal class="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem as-child>
+                  <NuxtLink :to="`/inboxes/${inbox.id}/edit`">Edit</NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem as-child>
+                  <NuxtLink :to="`/inboxes/${inbox.id}/runs`">Runs</NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem @select="openScanDrawer(inbox.id, inbox.label)">
+                  Scan Now
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  :disabled="deletingId === inbox.id"
+                  @select="deleteInbox(inbox.id, inbox.label)"
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </TableCell>
         </TableRow>
       </TableBody>
