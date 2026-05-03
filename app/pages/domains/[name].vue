@@ -73,24 +73,24 @@ function passRateClass(rate: number): string {
       <div class="grid grid-cols-3 gap-4">
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Total Messages
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
+              Total messages
             </p>
             <p class="text-2xl font-bold">{{ data.totalMessages.toLocaleString() }}</p>
           </CardContent>
         </Card>
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Distinct Source IPs
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
+              Distinct source IPs
             </p>
             <p class="text-2xl font-bold">{{ data.distinctIps.toLocaleString() }}</p>
           </CardContent>
         </Card>
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Forensic Reports
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
+              Forensic reports
             </p>
             <p class="text-2xl font-bold">{{ data.forensicCount.toLocaleString() }}</p>
           </CardContent>

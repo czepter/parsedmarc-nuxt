@@ -12,7 +12,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // Fixed SVG coordinate width — cell width adapts so all weeks fill exactly SVG_W
 const SVG_W = 500
-const LABEL_W = 32
+const LABEL_W = 36
 const LABEL_H = 20
 const CELL_H = 14
 const GAP = 2

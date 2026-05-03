@@ -17,6 +17,7 @@ interface Row {
   label: string
   tooltip: string
   textClass: string
+  barClass: string
   data: StatusCategory
 }
 
@@ -26,6 +27,7 @@ const rows = computed<Row[]>(() => [
     label: 'Pass',
     tooltip: 'DMARC alignment passed — SPF or DKIM verified for the sending domain',
     textClass: 'text-green-700 dark:text-green-400',
+    barClass: 'bg-green-600 dark:bg-green-500',
     data: props.pass,
   },
   {
@@ -33,6 +35,7 @@ const rows = computed<Row[]>(() => [
     label: 'Misconfigured',
     tooltip: 'Authentication passed but alignment failed — relay, wrong domain, or forwarding',
     textClass: 'text-amber-700 dark:text-amber-400',
+    barClass: 'bg-amber-500 dark:bg-amber-400',
     data: props.misconfigured,
   },
   {
@@ -40,6 +43,7 @@ const rows = computed<Row[]>(() => [
     label: 'Spoofed',
     tooltip: 'No authentication passed — message is likely forged',
     textClass: 'text-red-700 dark:text-red-400',
+    barClass: 'bg-red-600 dark:bg-red-500',
     data: props.spoofed,
   },
 ])
@@ -69,7 +73,7 @@ const rows = computed<Row[]>(() => [
         {{ total === 0 ? '—' : row.data.count.toLocaleString() }}
       </span>
 
-      <Progress :model-value="row.data.pct" class="h-1.5 w-24 shrink-0" />
+      <Progress :model-value="row.data.pct" class="h-1.5 w-24 shrink-0" :indicator-class="row.barClass" />
 
       <span class="text-xs text-muted-foreground w-9 text-right shrink-0">
         {{ total === 0 ? '—' : `${row.data.pct.toFixed(0)}%` }}

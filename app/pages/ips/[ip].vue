@@ -99,15 +99,15 @@ const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Total Messages
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
+              Total messages
             </p>
             <p class="text-2xl font-bold">{{ data.totalMessages.toLocaleString() }}</p>
           </CardContent>
         </Card>
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
               Country
             </p>
             <p class="text-2xl font-bold">{{ data.geo?.country ?? '—' }}</p>
@@ -115,7 +115,7 @@ const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
         </Card>
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
               City
             </p>
             <p class="text-2xl font-bold">{{ data.geo?.city ?? '—' }}</p>
@@ -123,8 +123,8 @@ const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
         </Card>
         <Card class="p-4">
           <CardContent class="p-0 space-y-1">
-            <p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Domains Targeted
+            <p class="text-muted-foreground text-xs font-medium tracking-wide">
+              Domains targeted
             </p>
             <p class="text-2xl font-bold">{{ data.domains.length }}</p>
           </CardContent>

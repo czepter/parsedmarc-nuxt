@@ -125,7 +125,7 @@ function downloadBackup() {
 
     <template v-else-if="status === 'success' && data">
       <!-- ── GeoIP card ────────────────────────────────────────── -->
-      <Card>
+      <Card class="shadow-sm">
         <CardContent class="pt-6 space-y-4">
           <div class="flex items-start justify-between gap-4">
             <div>
@@ -168,7 +168,7 @@ function downloadBackup() {
       </Card>
 
       <!-- ── Password card ─────────────────────────────────────── -->
-      <Card>
+      <Card class="shadow-sm">
         <CardContent class="pt-6 space-y-4">
           <div>
             <h2 class="text-base font-semibold">Change Password</h2>
@@ -221,7 +221,7 @@ function downloadBackup() {
       </Card>
 
       <!-- ── Backup card ───────────────────────────────────────── -->
-      <Card>
+      <Card class="shadow-sm">
         <CardContent class="pt-6 space-y-4">
           <div>
             <h2 class="text-base font-semibold">Database Backup</h2>
