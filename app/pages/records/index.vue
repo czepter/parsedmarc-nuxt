@@ -226,9 +226,9 @@ const showingTo = computed(() => {
 const SORT_ICON: Record<string, string> = { asc: '↑', desc: '↓' }
 
 const DISPOSITION_BADGE_CLASS: Record<string, string> = {
-  none: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-  quarantine: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-  reject: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+  none: 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
+  quarantine: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  reject: 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
 }
 
 // ── DMARC status classification ────────────────────────────────────────────
@@ -250,9 +250,9 @@ const STATUS_LABEL: Record<DmarcStatus, string> = {
 }
 
 const STATUS_BADGE_CLASS: Record<DmarcStatus, string> = {
-  pass: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-  spoofed: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+  pass: 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
+  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  spoofed: 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
 }
 
 const STATUS_TOOLTIP: Record<DmarcStatus, string> = {

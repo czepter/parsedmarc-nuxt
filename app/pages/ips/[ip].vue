@@ -50,9 +50,9 @@ const ip = route.params.ip as string
 const { data, status, error } = await useFetch<IpDetailResponse>(`/api/ips/${encodeURIComponent(ip)}`)
 
 const DISPOSITION_COLORS: Record<string, string> = {
-  none: 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
-  quarantine: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
-  reject: 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
+  none: 'text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
+  quarantine: 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
+  reject: 'text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
 }
 
 function dispositionClass(d: string): string {
@@ -78,9 +78,9 @@ const STATUS_LABEL: Record<DmarcStatus, string> = {
 }
 
 const STATUS_BADGE_CLASS: Record<DmarcStatus, string> = {
-  pass: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-  spoofed: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+  pass: 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
+  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  spoofed: 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
 }
 
 const STATUS_TOOLTIP: Record<DmarcStatus, string> = {

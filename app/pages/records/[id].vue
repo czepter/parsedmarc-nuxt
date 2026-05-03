@@ -64,9 +64,9 @@ const { data, status, error } = await useFetch<RecordDetailResponse>(`/api/recor
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const DISPOSITION_COLORS: Record<string, string> = {
-  none: 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
-  quarantine: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
-  reject: 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
+  none: 'text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
+  quarantine: 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
+  reject: 'text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
 }
 
 function dispositionClass(d: string): string {
