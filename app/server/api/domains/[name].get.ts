@@ -1,3 +1,4 @@
+import type { Prisma } from '../../../generated/prisma/client'
 import prisma from '~~/lib/prisma'
 
 interface TopIp {
@@ -24,10 +25,20 @@ interface DomainDetailResponse {
   forensicCount: number
   topIps: TopIp[]
   recentReports: RecentReport[]
+  /**
+   * `domain` when this name is in the Domain table (owns DMARC reports of its
+   * own); `headerFromOnly` when it appears only as AggregateRecord.headerFrom
+   * (a subdomain that sends mail under a parent's policy). The two modes use
+   * different filters but produce the same response shape.
+   */
+  mode: 'domain' | 'headerFromOnly'
 }
 
 export default defineEventHandler(async (event): Promise<DomainDetailResponse> => {
   const { name } = getRouterParams(event)
+  if (!name) {
+    throw createError({ statusCode: 400, statusMessage: 'Missing domain' })
+  }
   const domainName = decodeURIComponent(name)
 
   const domain = await prisma.domain.findUnique({
@@ -35,18 +46,34 @@ export default defineEventHandler(async (event): Promise<DomainDetailResponse> =
     select: { id: true, name: true },
   })
 
-  if (!domain) {
-    throw createError({ statusCode: 404, statusMessage: 'Domain not found' })
+  // Fallback: if not in Domain table, check whether the name appears as
+  // AggregateRecord.headerFrom (subdomain under a parent's DMARC policy).
+  // Only 404 when neither path has data.
+  let mode: 'domain' | 'headerFromOnly'
+  if (domain) {
+    mode = 'domain'
   }
+  else {
+    const hasHeaderFromRecord = await prisma.aggregateRecord.findFirst({
+      where: { headerFrom: domainName },
+      select: { id: true },
+    })
+    if (!hasHeaderFromRecord) {
+      throw createError({ statusCode: 404, statusMessage: 'Domain not found' })
+    }
+    mode = 'headerFromOnly'
+  }
+
+  const recordWhere: Prisma.AggregateRecordWhereInput = mode === 'domain'
+    ? { report: { domainId: domain!.id } }
+    : { headerFrom: domainName }
 
   // Aggregate record stats grouped by IP + disposition.
   // Cap at 500 rows to bound memory — enough to find the top-10 IPs accurately
   // for all but the most extreme domains (thousands of distinct sending IPs).
   const ipGroups = await prisma.aggregateRecord.groupBy({
     by: ['sourceIp', 'disposition'],
-    where: {
-      report: { domainId: domain.id },
-    },
+    where: recordWhere,
     _sum: { count: true },
     orderBy: { _sum: { count: 'desc' } },
     take: 500,
@@ -85,39 +112,71 @@ export default defineEventHandler(async (event): Promise<DomainDetailResponse> =
   const totalMessages = Array.from(ipMap.values()).reduce((acc, v) => acc + v.total, 0)
   const distinctIps = ipMap.size
 
-  const forensicCount = await prisma.forensicReport.count({
-    where: { domainId: domain.id },
-  })
+  // Forensic reports only exist for policy domains; subdomains never own them.
+  const forensicCount = mode === 'domain'
+    ? await prisma.forensicReport.count({ where: { domainId: domain!.id } })
+    : 0
 
-  const reports = await prisma.aggregateReport.findMany({
-    where: { domainId: domain.id },
-    orderBy: { dateBegin: 'desc' },
-    take: 20,
-    select: {
-      id: true,
-      reportId: true,
-      orgName: true,
-      dateBegin: true,
-      dateEnd: true,
-      _count: { select: { records: true } },
-    },
-  })
-
-  const recentReports: RecentReport[] = reports.map(r => ({
-    id: r.id,
-    reportId: r.reportId,
-    orgName: r.orgName,
-    dateBegin: r.dateBegin.toISOString(),
-    dateEnd: r.dateEnd.toISOString(),
-    recordCount: r._count.records,
-  }))
+  // Recent aggregate reports.
+  // - domain mode: reports addressed to this domain's DMARC policy.
+  // - headerFromOnly: reports that contain at least one record about this
+  //   subdomain. The recordCount is filtered to records matching the
+  //   subdomain so the user sees per-subdomain volume per report.
+  let recentReports: RecentReport[]
+  if (mode === 'domain') {
+    const reports = await prisma.aggregateReport.findMany({
+      where: { domainId: domain!.id },
+      orderBy: { dateBegin: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        reportId: true,
+        orgName: true,
+        dateBegin: true,
+        dateEnd: true,
+        _count: { select: { records: true } },
+      },
+    })
+    recentReports = reports.map(r => ({
+      id: r.id,
+      reportId: r.reportId,
+      orgName: r.orgName,
+      dateBegin: r.dateBegin.toISOString(),
+      dateEnd: r.dateEnd.toISOString(),
+      recordCount: r._count.records,
+    }))
+  }
+  else {
+    const reports = await prisma.aggregateReport.findMany({
+      where: { records: { some: { headerFrom: domainName } } },
+      orderBy: { dateBegin: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        reportId: true,
+        orgName: true,
+        dateBegin: true,
+        dateEnd: true,
+        _count: { select: { records: { where: { headerFrom: domainName } } } },
+      },
+    })
+    recentReports = reports.map(r => ({
+      id: r.id,
+      reportId: r.reportId,
+      orgName: r.orgName,
+      dateBegin: r.dateBegin.toISOString(),
+      dateEnd: r.dateEnd.toISOString(),
+      recordCount: r._count.records,
+    }))
+  }
 
   return {
-    name: domain.name,
+    name: domain?.name ?? domainName,
     totalMessages,
     distinctIps,
     forensicCount,
     topIps,
     recentReports,
+    mode,
   }
 })

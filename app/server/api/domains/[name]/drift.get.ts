@@ -12,6 +12,12 @@ const WINDOW_DAYS = 30
  *   - Latest report's policyP.
  *   - Disposition counts over the last 30 days.
  *
+ * Supports two modes:
+ *   - domain: name is in the Domain table — use domainId-keyed aggregates.
+ *   - headerFromOnly: name is a subdomain that appears only as
+ *     AggregateRecord.headerFrom — use headerFrom-keyed aggregates and treat
+ *     latestReportPolicy as null (subdomain doesn't own a DMARC policy).
+ *
  * Inheritance read is cache-only here (noop refreshFn) so the endpoint stays
  * fast and never triggers live DNS — the daily cron and getEmailAuth handle
  * cache population.
@@ -31,30 +37,59 @@ export default defineEventHandler(async (event): Promise<DriftReport> => {
     where: { name: domainName },
     select: { id: true },
   })
-  if (!domain) {
-    throw createError({ statusCode: 404, statusMessage: 'Domain not found' })
+
+  // If not in Domain, allow the headerFrom-only path. 404 only when neither
+  // path has data.
+  let mode: 'domain' | 'headerFromOnly'
+  if (domain) {
+    mode = 'domain'
   }
+  else {
+    const hasHeaderFromRecord = await prisma.aggregateRecord.findFirst({
+      where: { headerFrom: domainName },
+      select: { id: true },
+    })
+    if (!hasHeaderFromRecord) {
+      throw createError({ statusCode: 404, statusMessage: 'Domain not found' })
+    }
+    mode = 'headerFromOnly'
+  }
+
+  const fromIso = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString()
 
   const [dnsLookup, latestReport, dispositionRows] = await Promise.all([
     prisma.dmarcLookup.findUnique({
       where: { domain: domainName },
       select: { record: true, policy: true, error: true },
     }),
-    prisma.aggregateReport.findFirst({
-      where: { domainId: domain.id },
-      orderBy: { dateBegin: 'desc' },
-      select: { policyP: true },
-    }),
-    prisma.$queryRaw<Array<{ disposition: string; total: number }>>`
-      SELECT
-        ar.disposition AS disposition,
-        CAST(SUM(ar.count) AS INTEGER) AS total
-      FROM AggregateRecord ar
-      JOIN AggregateReport rep ON rep.id = ar.reportId
-      WHERE rep.domainId = ${domain.id}
-        AND rep.dateBegin >= ${new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString()}
-      GROUP BY ar.disposition
-    `,
+    mode === 'domain'
+      ? prisma.aggregateReport.findFirst({
+          where: { domainId: domain!.id },
+          orderBy: { dateBegin: 'desc' },
+          select: { policyP: true },
+        })
+      : Promise.resolve(null),
+    mode === 'domain'
+      ? prisma.$queryRaw<Array<{ disposition: string; total: number }>>`
+          SELECT
+            ar.disposition AS disposition,
+            CAST(SUM(ar.count) AS INTEGER) AS total
+          FROM AggregateRecord ar
+          JOIN AggregateReport rep ON rep.id = ar.reportId
+          WHERE rep.domainId = ${domain!.id}
+            AND rep.dateBegin >= ${fromIso}
+          GROUP BY ar.disposition
+        `
+      : prisma.$queryRaw<Array<{ disposition: string; total: number }>>`
+          SELECT
+            ar.disposition AS disposition,
+            CAST(SUM(ar.count) AS INTEGER) AS total
+          FROM AggregateRecord ar
+          JOIN AggregateReport rep ON rep.id = ar.reportId
+          WHERE ar.headerFrom = ${domainName}
+            AND rep.dateBegin >= ${fromIso}
+          GROUP BY ar.disposition
+        `,
   ])
 
   const dispositionCounts: Record<string, number> = {}
@@ -62,11 +97,12 @@ export default defineEventHandler(async (event): Promise<DriftReport> => {
     dispositionCounts[row.disposition] = Number(row.total)
   }
 
-  // Inheritance: only consult the parent walk when we KNOW the domain has no
-  // record of its own (cache says NORECORD/error). Cache-only refreshFn keeps
-  // the endpoint DNS-free.
+  // Inheritance: for Domain rows, only consult when cache says NORECORD/error.
+  // For headerFrom-only, walk unconditionally — surfacing the parent's policy
+  // is the whole point.
   const cacheOnlyRefresh = async () => {}
-  const inherited = isDmarcMissing(dnsLookup)
+  const shouldInherit = mode === 'headerFromOnly' || isDmarcMissing(dnsLookup)
+  const inherited = shouldInherit
     ? await findInheritedDmarc(domainName, cacheOnlyRefresh)
     : null
 
