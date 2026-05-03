@@ -60,24 +60,21 @@ function fmtCount(n: number): string {
         </span>
 
         <!-- Stacked bar -->
-        <div class="flex h-2 w-full overflow-hidden rounded bg-muted">
+        <div class="flex h-1.5 w-24 overflow-hidden rounded-full bg-muted shrink-0">
           <div
-            class="bg-green-500 dark:bg-green-600 h-2 rounded-l"
+            class="bg-green-500 dark:bg-green-600 h-full"
             :style="{ width: `${passPercent(row.data)}%` }"
           />
           <div
-            class="bg-red-400 dark:bg-red-500 h-2 rounded-r"
+            class="bg-red-400 dark:bg-red-500 h-full"
             :style="{ width: `${failPercent(row.data)}%` }"
           />
         </div>
 
         <!-- Pass rate -->
-        <span class="text-sm font-semibold w-12 text-right shrink-0">
+        <span class="text-xs text-muted-foreground w-9 text-right shrink-0">
           {{ fmtRate(row.data) }}
         </span>
-
-        <!-- Pass label -->
-        <span class="text-xs text-green-600 dark:text-green-400 w-8 shrink-0">pass</span>
       </div>
 
       <!-- Count breakdown -->

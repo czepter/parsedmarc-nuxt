@@ -6,7 +6,6 @@ defineProps<{
     count: number
     share: number
     href?: string
-    flag?: string
   }>
   loading?: boolean
   emptyText?: string
@@ -42,9 +41,6 @@ defineProps<{
     >
       <!-- Rank -->
       <span class="text-xs text-muted-foreground w-4 shrink-0 text-right">{{ index + 1 }}</span>
-
-      <!-- Flag -->
-      <span v-if="item.flag" class="shrink-0">{{ item.flag }}</span>
 
       <!-- Label + sublabel -->
       <span class="min-w-0 flex-1 flex items-baseline gap-1">

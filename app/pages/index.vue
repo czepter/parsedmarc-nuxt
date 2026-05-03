@@ -62,7 +62,7 @@ const { data: reportingOrgsData, status: reportingOrgsStatus, refresh: refreshRe
 const { data: authData, status: authStatus, refresh: refreshAuth } = await useFetch<{ dkim: AuthDimension; spf: AuthDimension }>(authKey, { watch: false, key: authKey })
 
 const heatmapKey = computed(() => `/api/dashboard/heatmap?from=${timeRange.value.from}&to=${timeRange.value.to}`)
-const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ entries: Array<{ date: string; dow: number; total: number }> }>(heatmapKey, { watch: false, key: heatmapKey })
+const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ matrix: number[][] }>(heatmapKey, { watch: false, key: heatmapKey })
 
 watch(selectedWindow, () => {
   refreshStats()
@@ -82,9 +82,7 @@ const sourceView = ref<SourceView>('orgs')
 const sourceTitle = computed(() =>
   sourceView.value === 'orgs' ? 'Top Reporting Organizations' : 'Top Source IPs',
 )
-const sourceSubtitle = computed(() =>
-  sourceView.value === 'orgs' ? 'who sent the DMARC reports' : 'by message count',
-)
+const sourceSubtitle = computed(() => 'by message count')
 const sourceLoading = computed(() =>
   sourceView.value === 'orgs'
     ? reportingOrgsStatus.value === 'pending'
@@ -253,7 +251,7 @@ function fmtPercent(n: number): string {
     <!-- Breakdown Row 2 -->
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <!-- Authentication -->
-      <SectionCard title="Authentication" subtitle="DKIM & SPF results">
+      <SectionCard title="Authentication" subtitle="by DKIM & SPF result">
         <AuthBreakdown
           :loading="authStatus !== 'success' || !authData"
           :dkim="authData?.dkim ?? { pass: 0, fail: 0, total: 0 }"
@@ -269,7 +267,6 @@ function fmtPercent(n: number): string {
             label: countryName(c.name),
             count: c.count,
             share: c.share,
-            flag: countryFlag(c.name),
           }))"
         />
       </SectionCard>
@@ -291,9 +288,7 @@ function fmtPercent(n: number): string {
         <ClientOnly>
           <HeatMap
             v-if="heatmapStatus === 'success' && heatmapData"
-            :entries="heatmapData.entries"
-            :from="timeRange.from"
-            :to="timeRange.to"
+            :matrix="heatmapData.matrix"
           />
           <Skeleton v-else class="h-[130px] w-full rounded-md" />
         </ClientOnly>
