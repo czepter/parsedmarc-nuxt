@@ -1,7 +1,7 @@
 # Header-From Domain Inheritance
 
 **Date:** 2026-05-03
-**Status:** Approved
+**Status:** Implemented
 
 ## Problem
 

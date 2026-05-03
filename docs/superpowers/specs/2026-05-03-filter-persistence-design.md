@@ -1,7 +1,7 @@
 # Filter Persistence — Design
 
 **Date:** 2026-05-03
-**Status:** Approved
+**Status:** Implemented
 
 ## 1. Summary
 
