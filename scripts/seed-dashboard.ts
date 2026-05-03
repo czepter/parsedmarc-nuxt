@@ -7,6 +7,17 @@ import prisma from '../lib/prisma'
 const RECORDS_TARGET = 100_000
 const DISPOSITIONS = ['none', 'none', 'none', 'quarantine', 'reject'] as const
 const DKIM_SPF = ['pass', 'pass', 'fail'] as const
+// Mix of common reporting orgs — weighted so google.com dominates (typical real-world skew).
+// Without variety here, the "Top Reporting Organizations" dashboard card shows only one row.
+const ORG_NAMES = [
+  'google.com', 'google.com', 'google.com', 'google.com',
+  'mail.ru', 'mail.ru',
+  'Yahoo Inc.', 'Yahoo Inc.',
+  'Microsoft Corp.',
+  'Enterprise Outlook',
+  'Comcast',
+  'Fastmail Pty Ltd',
+] as const
 
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -56,7 +67,7 @@ async function main() {
     await prisma.aggregateReport.create({
       data: {
         reportId,
-        orgName: 'seed-org',
+        orgName: pick(ORG_NAMES),
         domainId: domain.id,
         dateBegin,
         dateEnd,
