@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ArrowUp, ArrowDown } from 'lucide-vue-next'
+
 const props = defineProps<{
   label: string
   value: string
@@ -6,20 +8,22 @@ const props = defineProps<{
   mono?: boolean
   subtitle?: string
   loading?: boolean
-  // Set true for metrics where an increase is bad (e.g. Misconfigured, Spoofed).
-  // Inverts delta badge colour: + = red, - = green.
   inverted?: boolean
 }>()
 
-const badgeClass = computed(() => {
-  if (!props.delta || props.delta === '—') return ''
+const deltaInfo = computed(() => {
+  if (!props.delta || props.delta === '—') return null
   const isPositive = props.delta.startsWith('+')
   const isNegative = props.delta.startsWith('-')
+  if (!isPositive && !isNegative) return null
   const good = props.inverted ? isNegative : isPositive
-  const bad  = props.inverted ? isPositive : isNegative
-  if (good) return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950 border-green-200 dark:border-green-800'
-  if (bad)  return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950 border-red-200 dark:border-red-800'
-  return ''
+  return {
+    up: isPositive,
+    colorClass: good
+      ? 'text-green-600 dark:text-green-400'
+      : 'text-red-600 dark:text-red-400',
+    display: props.delta.replace(/^[+-]/, ''),
+  }
 })
 </script>
 
@@ -27,31 +31,22 @@ const badgeClass = computed(() => {
   <Card class="p-4">
     <CardContent class="p-0 space-y-1">
       <template v-if="loading">
-        <Skeleton class="h-3 w-24" />
-        <Skeleton class="h-7 w-20 mt-1" />
-        <Skeleton class="h-3 w-16 mt-1" />
+        <Skeleton class="h-4 w-24" />
+        <Skeleton class="h-8 w-20 mt-1" />
+        <Skeleton class="h-4 w-16 mt-1" />
       </template>
       <template v-else>
-        <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{{ label }}</p>
-        <p
-          :class="mono
-            ? 'font-mono text-lg font-bold truncate'
-            : 'text-2xl font-bold'"
-        >{{ value }}</p>
-        <!-- Delta badge -->
-        <div v-if="delta !== undefined && delta !== '—'" class="pt-0.5">
-          <Badge variant="outline" :class="['text-xs', badgeClass]">{{ delta }}</Badge>
+        <p class="text-sm font-semibold">{{ label }}</p>
+        <p :class="mono ? 'font-mono text-lg font-bold truncate' : 'text-2xl font-bold'">
+          {{ value }}
+        </p>
+        <div v-if="deltaInfo" :class="['flex items-center gap-1 text-sm font-medium', deltaInfo.colorClass]">
+          <ArrowUp v-if="deltaInfo.up" class="size-3.5 shrink-0" />
+          <ArrowDown v-else class="size-3.5 shrink-0" />
+          <span>{{ deltaInfo.display }}</span>
         </div>
-        <!-- Neutral delta (—) -->
-        <p
-          v-else-if="delta === '—'"
-          class="text-xs text-muted-foreground"
-        >—</p>
-        <!-- Static subtitle -->
-        <p
-          v-else-if="subtitle"
-          class="text-xs text-muted-foreground"
-        >{{ subtitle }}</p>
+        <p v-else-if="delta === '—'" class="text-xs text-muted-foreground">—</p>
+        <p v-else-if="subtitle" class="text-xs text-muted-foreground">{{ subtitle }}</p>
       </template>
     </CardContent>
   </Card>
