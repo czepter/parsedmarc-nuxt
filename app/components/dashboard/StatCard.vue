@@ -6,14 +6,19 @@ const props = defineProps<{
   mono?: boolean
   subtitle?: string
   loading?: boolean
+  // Set true for metrics where an increase is bad (e.g. Misconfigured, Spoofed).
+  // Inverts delta badge colour: + = red, - = green.
+  inverted?: boolean
 }>()
 
 const badgeClass = computed(() => {
   if (!props.delta || props.delta === '—') return ''
-  if (props.delta.startsWith('+'))
-    return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950 border-green-200 dark:border-green-800'
-  if (props.delta.startsWith('-'))
-    return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950 border-red-200 dark:border-red-800'
+  const isPositive = props.delta.startsWith('+')
+  const isNegative = props.delta.startsWith('-')
+  const good = props.inverted ? isNegative : isPositive
+  const bad  = props.inverted ? isPositive : isNegative
+  if (good) return 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950 border-green-200 dark:border-green-800'
+  if (bad)  return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950 border-red-200 dark:border-red-800'
   return ''
 })
 </script>

@@ -21,6 +21,9 @@ interface RecentRecord {
   dkim: string
   spf: string
   headerFrom: string
+  dkimAuthResult: string | null
+  spfAuthResult: string | null
+  dmarcCompliant: boolean
 }
 
 interface GeoData {
@@ -104,6 +107,8 @@ export default defineEventHandler(async (event): Promise<IpDetailResponse> => {
       dkim: true,
       spf: true,
       headerFrom: true,
+      dkimAuthResult: true,
+      spfAuthResult: true,
       report: {
         select: {
           id: true,
@@ -124,6 +129,9 @@ export default defineEventHandler(async (event): Promise<IpDetailResponse> => {
     dkim: r.dkim,
     spf: r.spf,
     headerFrom: r.headerFrom,
+    dkimAuthResult: r.dkimAuthResult,
+    spfAuthResult: r.spfAuthResult,
+    dmarcCompliant: r.dkim === 'pass' || r.spf === 'pass',
   }))
 
   return {

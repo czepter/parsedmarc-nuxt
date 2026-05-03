@@ -231,10 +231,39 @@ const DISPOSITION_BADGE_CLASS: Record<string, string> = {
   reject: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
 }
 
-function authPillClass(result: string | null): string {
-  if (result === 'pass') return 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
-  if (result === 'fail') return 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
-  return 'bg-muted text-muted-foreground border-border'
+// ── DMARC status classification ────────────────────────────────────────────
+// Pass          — DMARC alignment passed (SPF or DKIM)
+// Misconfigured — auth passed but alignment failed (relay, wrong domain, forwarding)
+// Spoofed       — no auth passed at all; message likely forged
+type DmarcStatus = 'pass' | 'misconfigured' | 'spoofed'
+
+function dmarcStatus(r: RecordRow): DmarcStatus {
+  if (r.dmarcCompliant) return 'pass'
+  const anyAuthPassed = r.dkimAuthResult === 'pass' || r.spfAuthResult === 'pass'
+  return anyAuthPassed ? 'misconfigured' : 'spoofed'
+}
+
+const STATUS_LABEL: Record<DmarcStatus, string> = {
+  pass: 'Pass',
+  misconfigured: 'Misconfigured',
+  spoofed: 'Spoofed',
+}
+
+const STATUS_BADGE_CLASS: Record<DmarcStatus, string> = {
+  pass: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  spoofed: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+}
+
+const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
+  pass: 'DMARC passed — SPF or DKIM alignment verified',
+  misconfigured: 'Misconfigured — authentication passed but alignment failed (wrong domain, relay, or forwarding)',
+  spoofed: 'Spoofed — no authentication passed; message likely forged',
+}
+
+function resultClass(result: string | null): string {
+  if (result === 'pass') return 'text-green-600 dark:text-green-400'
+  return 'text-red-600 dark:text-red-400'
 }
 </script>
 
@@ -348,7 +377,7 @@ function authPillClass(result: string | null): string {
             </TableHead>
             <TableHead>Disposition</TableHead>
             <TableHead>Header From</TableHead>
-            <TableHead>DMARC</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>DKIM</TableHead>
             <TableHead>SPF</TableHead>
             <TableHead class="text-right">Record</TableHead>
@@ -365,9 +394,9 @@ function authPillClass(result: string | null): string {
               <TableCell><Skeleton class="h-4 w-10" /></TableCell>
               <TableCell><Skeleton class="h-4 w-20" /></TableCell>
               <TableCell><Skeleton class="h-4 w-36" /></TableCell>
-              <TableCell><Skeleton class="h-4 w-6" /></TableCell>
-              <TableCell><Skeleton class="h-4 w-16" /></TableCell>
-              <TableCell><Skeleton class="h-4 w-16" /></TableCell>
+              <TableCell><Skeleton class="h-5 w-24 rounded-full" /></TableCell>
+              <TableCell><Skeleton class="h-4 w-10" /></TableCell>
+              <TableCell><Skeleton class="h-4 w-10" /></TableCell>
               <TableCell><Skeleton class="h-4 w-16" /></TableCell>
             </TableRow>
           </template>
@@ -400,45 +429,29 @@ function authPillClass(result: string | null): string {
                   <NuxtLink :to="`/domains/${record.headerFrom}`">{{ record.headerFrom }}</NuxtLink>
                 </Button>
               </TableCell>
-              <!-- DMARC compliance -->
+              <!-- DMARC status: Pass / Misconfigured / Spoofed -->
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  :class="STATUS_BADGE_CLASS[dmarcStatus(record)]"
+                  :title="STATUS_TOOLTIP[dmarcStatus(record)]"
+                >
+                  {{ STATUS_LABEL[dmarcStatus(record)] }}
+                </Badge>
+              </TableCell>
+              <!-- DKIM alignment verdict -->
               <TableCell>
                 <span
-                  :title="record.dmarcCompliant ? 'DMARC: SPF or DKIM alignment passed' : 'DMARC: both SPF and DKIM alignment failed'"
-                  :class="record.dmarcCompliant ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
-                  class="text-sm font-medium"
-                >{{ record.dmarcCompliant ? '✓' : '✗' }}</span>
+                  :class="['text-xs font-medium', resultClass(record.dkim)]"
+                  title="DKIM alignment verdict (DMARC evaluated)"
+                >{{ record.dkim }}</span>
               </TableCell>
-              <!-- DKIM: auth pill only when it diverges from policy (adds diagnostic info) -->
+              <!-- SPF alignment verdict -->
               <TableCell>
-                <div class="flex items-center gap-1">
-                  <template v-if="record.dkimAuthResult && record.dkimAuthResult !== record.dkim">
-                    <span
-                      :class="['inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium', authPillClass(record.dkimAuthResult)]"
-                      title="DKIM authentication result"
-                    >{{ record.dkimAuthResult }}</span>
-                    <span class="text-[10px] text-muted-foreground">→</span>
-                  </template>
-                  <span
-                    :class="['text-xs font-medium', record.dkim === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']"
-                    title="DKIM policy (DMARC verdict)"
-                  >{{ record.dkim }}</span>
-                </div>
-              </TableCell>
-              <!-- SPF: auth pill only when it diverges from policy (adds diagnostic info) -->
-              <TableCell>
-                <div class="flex items-center gap-1">
-                  <template v-if="record.spfAuthResult && record.spfAuthResult !== record.spf">
-                    <span
-                      :class="['inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium', authPillClass(record.spfAuthResult)]"
-                      title="SPF authentication result"
-                    >{{ record.spfAuthResult }}</span>
-                    <span class="text-[10px] text-muted-foreground">→</span>
-                  </template>
-                  <span
-                    :class="['text-xs font-medium', record.spf === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']"
-                    title="SPF policy (DMARC verdict)"
-                  >{{ record.spf }}</span>
-                </div>
+                <span
+                  :class="['text-xs font-medium', resultClass(record.spf)]"
+                  title="SPF alignment verdict (DMARC evaluated)"
+                >{{ record.spf }}</span>
               </TableCell>
               <TableCell class="text-right">
                 <Button variant="link" size="sm" class="h-auto p-0 font-mono text-[11px] text-muted-foreground hover:text-foreground" as-child>

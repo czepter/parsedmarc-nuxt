@@ -22,6 +22,9 @@ interface RecentRecord {
   dkim: string
   spf: string
   headerFrom: string
+  dkimAuthResult: string | null
+  spfAuthResult: string | null
+  dmarcCompliant: boolean
 }
 
 interface GeoData {
@@ -56,8 +59,34 @@ function dispositionClass(d: string): string {
   return DISPOSITION_COLORS[d] ?? 'text-muted-foreground bg-muted border-border'
 }
 
-function alignClass(d: string): string {
-  return d === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+function resultClass(result: string | null): string {
+  return result === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+}
+
+type DmarcStatus = 'pass' | 'misconfigured' | 'spoofed'
+
+function dmarcStatus(r: RecentRecord): DmarcStatus {
+  if (r.dmarcCompliant) return 'pass'
+  const anyAuthPassed = r.dkimAuthResult === 'pass' || r.spfAuthResult === 'pass'
+  return anyAuthPassed ? 'misconfigured' : 'spoofed'
+}
+
+const STATUS_LABEL: Record<DmarcStatus, string> = {
+  pass: 'Pass',
+  misconfigured: 'Misconfigured',
+  spoofed: 'Spoofed',
+}
+
+const STATUS_BADGE_CLASS: Record<DmarcStatus, string> = {
+  pass: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  spoofed: 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+}
+
+const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
+  pass: 'DMARC passed — SPF or DKIM alignment verified',
+  misconfigured: 'Misconfigured — authentication passed but alignment failed (wrong domain, relay, or forwarding)',
+  spoofed: 'Spoofed — no authentication passed; message likely forged',
 }
 </script>
 
@@ -186,6 +215,7 @@ function alignClass(d: string): string {
                 <TableHead>Header From</TableHead>
                 <TableHead class="text-right">Count</TableHead>
                 <TableHead>Disposition</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>DKIM</TableHead>
                 <TableHead>SPF</TableHead>
               </TableRow>
@@ -215,18 +245,27 @@ function alignClass(d: string): string {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span :class="['text-xs font-medium', alignClass(rec.dkim)]">
+                  <Badge
+                    variant="outline"
+                    :class="STATUS_BADGE_CLASS[dmarcStatus(rec)]"
+                    :title="STATUS_TOOLTIP[dmarcStatus(rec)]"
+                  >
+                    {{ STATUS_LABEL[dmarcStatus(rec)] }}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <span :class="['text-xs font-medium', resultClass(rec.dkim)]">
                     {{ rec.dkim }}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span :class="['text-xs font-medium', alignClass(rec.spf)]">
+                  <span :class="['text-xs font-medium', resultClass(rec.spf)]">
                     {{ rec.spf }}
                   </span>
                 </TableCell>
               </TableRow>
               <TableRow v-if="data.recentRecords.length === 0">
-                <TableCell colspan="7" class="text-muted-foreground py-8 text-center text-sm">
+                <TableCell colspan="8" class="text-muted-foreground py-8 text-center text-sm">
                   No records found for this IP.
                 </TableCell>
               </TableRow>

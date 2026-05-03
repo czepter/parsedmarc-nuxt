@@ -2,9 +2,9 @@ import prisma from '~~/lib/prisma'
 
 interface TileData {
   totalMessages: number
-  passRate: number          // 0–100, percentage
-  topSourceIp: string | null
-  topCountry: string | null
+  passRate: number          // 0–100
+  misconfiguredRate: number // 0–100
+  spoofedRate: number       // 0–100
   distinctIps: number
 }
 
@@ -19,36 +19,37 @@ async function computeTiles(fromMs: number, toMs: number): Promise<TileData> {
   const fromIso = new Date(fromMs).toISOString()
   const toIso = new Date(toMs).toISOString()
 
-  // 1. True DMARC compliance rate: a record passes DMARC if either SPF or DKIM alignment passed.
-  //    Prisma groupBy cannot express OR conditions across columns, so we use $queryRaw.
-  const complianceRows = await prisma.$queryRaw<Array<{ passing: number; total: number }>>`
+  // Three mutually exclusive status buckets (mirrors auth.get.ts logic):
+  //   passing      — dkim='pass' OR spf='pass'
+  //   misconfigured — DMARC failed but at least one raw auth check passed
+  //   spoofed      — remainder (no auth passed at all)
+  const complianceRows = await prisma.$queryRaw<
+    Array<{ passing: number; misconfigured: number; total: number }>
+  >`
     SELECT
-      SUM(CASE WHEN ar.dkim = 'pass' OR ar.spf = 'pass' THEN ar.count ELSE 0 END) as passing,
+      SUM(CASE WHEN ar.dkim = 'pass' OR ar.spf = 'pass'
+               THEN ar.count ELSE 0 END) as passing,
+      SUM(CASE
+            WHEN (ar.dkim != 'pass' AND ar.spf != 'pass')
+              AND (ar.dkimAuthResult = 'pass' OR ar.spfAuthResult = 'pass')
+            THEN ar.count ELSE 0 END) as misconfigured,
       SUM(ar.count) as total
     FROM AggregateRecord ar
     JOIN AggregateReport rep ON rep.id = ar.reportId
     WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
   `
+
   const totalMessages = Number(complianceRows[0]?.total ?? 0)
   const passingMessages = Number(complianceRows[0]?.passing ?? 0)
-  const passRate = totalMessages > 0 ? (passingMessages / totalMessages) * 100 : 0
+  const misconfiguredMessages = Number(complianceRows[0]?.misconfigured ?? 0)
+  const spoofedMessages = Math.max(0, totalMessages - passingMessages - misconfiguredMessages)
 
-  // 2. Top source IP by sum of count
-  const ipGroups = await prisma.aggregateRecord.groupBy({
-    by: ['sourceIp'],
-    where: {
-      report: {
-        dateBegin: { gte: new Date(fromMs), lt: new Date(toMs) },
-      },
-    },
-    _sum: { count: true },
-    orderBy: { _sum: { count: 'desc' } },
-    take: 1,
-  })
-  const topSourceIp = ipGroups[0]?.sourceIp ?? null
+  function rate(n: number): number {
+    return totalMessages > 0 ? Math.round((n / totalMessages) * 1000) / 10 : 0
+  }
 
-  // 3. Distinct IP count
-  const distinctIps = await prisma.aggregateRecord.groupBy({
+  // Distinct IP count
+  const distinctIpGroups = await prisma.aggregateRecord.groupBy({
     by: ['sourceIp'],
     where: {
       report: {
@@ -56,26 +57,13 @@ async function computeTiles(fromMs: number, toMs: number): Promise<TileData> {
       },
     },
   })
-
-  // 4. Top country via GeoLocation join
-  const countryRows = await prisma.$queryRaw<Array<{ country: string | null; total: number }>>`
-    SELECT gl.country, SUM(ar.count) as total
-    FROM AggregateRecord ar
-    JOIN AggregateReport rep ON rep.id = ar.reportId
-    LEFT JOIN GeoLocation gl ON gl.id = ar.geoLocationId
-    WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
-    GROUP BY gl.country
-    ORDER BY total DESC
-    LIMIT 1
-  `
-  const topCountry = countryRows[0]?.country ?? null
 
   return {
     totalMessages,
-    passRate: Math.round(passRate * 10) / 10,
-    topSourceIp,
-    topCountry,
-    distinctIps: distinctIps.length,
+    passRate: rate(passingMessages),
+    misconfiguredRate: rate(misconfiguredMessages),
+    spoofedRate: rate(spoofedMessages),
+    distinctIps: distinctIpGroups.length,
   }
 }
 

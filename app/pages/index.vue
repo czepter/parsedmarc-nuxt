@@ -6,8 +6,8 @@ definePageMeta({ layout: 'default' })
 interface TileData {
   totalMessages: number
   passRate: number
-  topSourceIp: string | null
-  topCountry: string | null
+  misconfiguredRate: number
+  spoofedRate: number
   distinctIps: number
 }
 interface StatsResponse {
@@ -26,7 +26,8 @@ interface CountryItem { code: string | null; name: string | null; count: number;
 interface SourceIpItem { ip: string; country: string | null; count: number; share: number; passRate: number }
 interface HeaderFromItem { domain: string; count: number; share: number; passRate: number }
 interface ReportingOrgItem { orgName: string; count: number; share: number }
-interface AuthDimension { pass: number; fail: number; total: number }
+interface AuthCategory { count: number; pct: number }
+interface AuthResponse { pass: AuthCategory; misconfigured: AuthCategory; spoofed: AuthCategory; total: number }
 // ── URL state + window persistence ────────────────────────────────────────
 const route = useRoute()
 const { selectedWindow, timeRange, setWindow } = useWindowFilter()
@@ -59,7 +60,7 @@ const { data: countriesData, status: countriesStatus, refresh: refreshCountries 
 const { data: sourceIpsData, status: sourceIpsStatus, refresh: refreshSourceIps } = await useFetch<{ ips: SourceIpItem[] }>(sourceIpsKey, { watch: false, key: sourceIpsKey })
 const { data: headerFromData, status: headerFromStatus, refresh: refreshHeaderFrom } = await useFetch<{ domains: HeaderFromItem[] }>(headerFromKey, { watch: false, key: headerFromKey })
 const { data: reportingOrgsData, status: reportingOrgsStatus, refresh: refreshReportingOrgs } = await useFetch<{ orgs: ReportingOrgItem[] }>(reportingOrgsKey, { watch: false, key: reportingOrgsKey })
-const { data: authData, status: authStatus, refresh: refreshAuth } = await useFetch<{ dkim: AuthDimension; spf: AuthDimension }>(authKey, { watch: false, key: authKey })
+const { data: authData, status: authStatus, refresh: refreshAuth } = await useFetch<AuthResponse>(authKey, { watch: false, key: authKey })
 
 const heatmapKey = computed(() => `/api/dashboard/heatmap?from=${timeRange.value.from}&to=${timeRange.value.to}`)
 const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ entries: Array<{ date: string; dow: number; total: number }> }>(heatmapKey, { watch: false, key: heatmapKey })
@@ -157,20 +158,24 @@ function fmtPercent(n: number): string {
         :delta="fmtDelta(stats.current.totalMessages, stats.previous.totalMessages)"
       />
       <StatCard
-        label="DMARC Pass Rate"
+        label="Pass"
         :value="fmtPercent(stats.current.passRate)"
         :delta="fmtDelta(stats.current.passRate, stats.previous.passRate, 'pp')"
+        subtitle="DMARC alignment passed"
       />
       <StatCard
-        label="Top Source IP"
-        :value="stats.current.topSourceIp ?? '—'"
-        subtitle="by message count"
-        :mono="true"
+        label="Misconfigured"
+        :value="fmtPercent(stats.current.misconfiguredRate)"
+        :delta="fmtDelta(stats.current.misconfiguredRate, stats.previous.misconfiguredRate, 'pp')"
+        subtitle="Auth passed, alignment failed"
+        :inverted="true"
       />
       <StatCard
-        label="Top Country"
-        :value="stats.current.topCountry ?? '—'"
-        subtitle="by message count"
+        label="Spoofed"
+        :value="fmtPercent(stats.current.spoofedRate)"
+        :delta="fmtDelta(stats.current.spoofedRate, stats.previous.spoofedRate, 'pp')"
+        subtitle="No authentication passed"
+        :inverted="true"
       />
       <StatCard
         label="Distinct IPs"
@@ -250,12 +255,14 @@ function fmtPercent(n: number): string {
 
     <!-- Breakdown Row 2 -->
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <!-- Authentication -->
-      <SectionCard title="Authentication" subtitle="by DKIM & SPF result">
+      <!-- DMARC Status Breakdown -->
+      <SectionCard title="DMARC Status" subtitle="message outcome breakdown">
         <AuthBreakdown
           :loading="authStatus !== 'success' || !authData"
-          :dkim="authData?.dkim ?? { pass: 0, fail: 0, total: 0 }"
-          :spf="authData?.spf ?? { pass: 0, fail: 0, total: 0 }"
+          :pass="authData?.pass ?? { count: 0, pct: 0 }"
+          :misconfigured="authData?.misconfigured ?? { count: 0, pct: 0 }"
+          :spoofed="authData?.spoofed ?? { count: 0, pct: 0 }"
+          :total="authData?.total ?? 0"
         />
       </SectionCard>
 

@@ -1,89 +1,111 @@
 <script setup lang="ts">
+interface StatusCategory {
+  count: number
+  pct: number
+}
+
 const props = defineProps<{
-  dkim: { pass: number; fail: number; total: number }
-  spf:  { pass: number; fail: number; total: number }
+  pass: StatusCategory
+  misconfigured: StatusCategory
+  spoofed: StatusCategory
+  total: number
   loading?: boolean
 }>()
 
 interface Row {
+  key: 'pass' | 'misconfigured' | 'spoofed'
   label: string
-  data: { pass: number; fail: number; total: number }
+  tooltip: string
+  barClass: string
+  textClass: string
+  data: StatusCategory
 }
 
 const rows = computed<Row[]>(() => [
-  { label: 'DKIM', data: props.dkim },
-  { label: 'SPF',  data: props.spf  },
+  {
+    key: 'pass',
+    label: 'Pass',
+    tooltip: 'DMARC alignment passed — SPF or DKIM verified for the sending domain',
+    barClass: 'bg-green-500 dark:bg-green-600',
+    textClass: 'text-green-700 dark:text-green-400',
+    data: props.pass,
+  },
+  {
+    key: 'misconfigured',
+    label: 'Misconfigured',
+    tooltip: 'Authentication passed but alignment failed — relay, wrong domain, or forwarding',
+    barClass: 'bg-amber-400 dark:bg-amber-500',
+    textClass: 'text-amber-700 dark:text-amber-400',
+    data: props.misconfigured,
+  },
+  {
+    key: 'spoofed',
+    label: 'Spoofed',
+    tooltip: 'No authentication passed — message is likely forged',
+    barClass: 'bg-red-400 dark:bg-red-500',
+    textClass: 'text-red-700 dark:text-red-400',
+    data: props.spoofed,
+  },
 ])
 
-function passPercent(d: { pass: number; total: number }): number {
-  if (d.total === 0) return 0
-  return (d.pass / d.total) * 100
-}
-
-function failPercent(d: { fail: number; total: number }): number {
-  if (d.total === 0) return 0
-  return (d.fail / d.total) * 100
-}
-
-function fmtRate(d: { pass: number; total: number }): string {
-  if (d.total === 0) return '—'
-  return `${((d.pass / d.total) * 100).toFixed(1)}%`
-}
-
 function fmtCount(n: number): string {
-  return n.toLocaleString()
+  return Intl.NumberFormat('en-US').format(n)
 }
 </script>
 
 <template>
-  <!-- Loading state -->
-  <div v-if="loading" class="space-y-4">
-    <div v-for="i in 2" :key="i" class="space-y-1.5">
-      <div class="flex items-center gap-3">
-        <Skeleton class="h-3 w-8 shrink-0" />
-        <Skeleton class="h-2 w-full" />
-        <Skeleton class="h-3 w-12 shrink-0" />
-        <Skeleton class="h-3 w-8 shrink-0" />
+  <div class="space-y-4">
+    <!-- Loading state -->
+    <template v-if="loading">
+      <div v-for="i in 3" :key="i" class="space-y-1.5">
+        <div class="flex items-center gap-3">
+          <Skeleton class="h-3 w-20 shrink-0" />
+          <Skeleton class="h-2 w-full" />
+          <Skeleton class="h-3 w-10 shrink-0" />
+        </div>
+        <Skeleton class="h-3 w-40 ml-24" />
       </div>
-      <Skeleton class="h-3 w-40 ml-11" />
-    </div>
-  </div>
+    </template>
 
-  <!-- Data state -->
-  <div v-else class="space-y-4">
-    <div v-for="row in rows" :key="row.label" class="space-y-1.5">
-      <!-- Bar row -->
-      <div class="flex items-center gap-3">
-        <!-- Label -->
-        <span class="text-xs font-mono font-medium w-8 shrink-0 text-muted-foreground">
-          {{ row.label }}
-        </span>
+    <!-- Data state -->
+    <template v-else>
+      <div v-for="row in rows" :key="row.key" class="space-y-1.5">
+        <!-- Bar row -->
+        <div class="flex items-center gap-3">
+          <!-- Label -->
+          <span
+            class="text-xs font-medium w-20 shrink-0"
+            :class="row.textClass"
+            :title="row.tooltip"
+          >
+            {{ row.label }}
+          </span>
 
-        <!-- Stacked bar -->
-        <div class="flex h-1.5 w-24 overflow-hidden rounded-full bg-muted shrink-0">
-          <div
-            class="bg-green-500 dark:bg-green-600 h-full"
-            :style="{ width: `${passPercent(row.data)}%` }"
-          />
-          <div
-            class="bg-red-400 dark:bg-red-500 h-full"
-            :style="{ width: `${failPercent(row.data)}%` }"
-          />
+          <!-- Fill bar (single segment — width = % of total) -->
+          <div class="relative flex h-2 w-full overflow-hidden rounded bg-muted">
+            <div
+              :class="[row.barClass, 'h-2 rounded transition-all duration-300']"
+              :style="{ width: `${row.data.pct}%` }"
+            />
+          </div>
+
+          <!-- Percentage -->
+          <span
+            class="text-sm font-semibold w-12 text-right shrink-0 tabular-nums"
+            :class="row.textClass"
+          >
+            {{ total === 0 ? '—' : `${row.data.pct.toFixed(1)}%` }}
+          </span>
         </div>
 
-        <!-- Pass rate -->
-        <span class="text-xs text-muted-foreground w-9 text-right shrink-0">
-          {{ fmtRate(row.data) }}
-        </span>
+        <!-- Count -->
+        <p class="text-xs text-muted-foreground pl-24">
+          <template v-if="total === 0">—</template>
+          <template v-else>
+            {{ fmtCount(row.data.count) }} messages
+          </template>
+        </p>
       </div>
-
-      <!-- Count breakdown -->
-      <p class="text-xs text-muted-foreground pl-11">
-        <template v-if="row.data.total === 0">—</template>
-        <template v-else>
-          {{ fmtCount(row.data.pass) }} pass · {{ fmtCount(row.data.fail) }} fail
-        </template>
-      </p>
-    </div>
+    </template>
   </div>
 </template>
