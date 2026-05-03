@@ -16,7 +16,6 @@ interface Row {
   key: 'pass' | 'misconfigured' | 'spoofed'
   label: string
   tooltip: string
-  barClass: string
   textClass: string
   data: StatusCategory
 }
@@ -26,7 +25,6 @@ const rows = computed<Row[]>(() => [
     key: 'pass',
     label: 'Pass',
     tooltip: 'DMARC alignment passed — SPF or DKIM verified for the sending domain',
-    barClass: 'bg-green-500 dark:bg-green-600',
     textClass: 'text-green-700 dark:text-green-400',
     data: props.pass,
   },
@@ -34,7 +32,6 @@ const rows = computed<Row[]>(() => [
     key: 'misconfigured',
     label: 'Misconfigured',
     tooltip: 'Authentication passed but alignment failed — relay, wrong domain, or forwarding',
-    barClass: 'bg-amber-400 dark:bg-amber-500',
     textClass: 'text-amber-700 dark:text-amber-400',
     data: props.misconfigured,
   },
@@ -42,70 +39,41 @@ const rows = computed<Row[]>(() => [
     key: 'spoofed',
     label: 'Spoofed',
     tooltip: 'No authentication passed — message is likely forged',
-    barClass: 'bg-red-400 dark:bg-red-500',
     textClass: 'text-red-700 dark:text-red-400',
     data: props.spoofed,
   },
 ])
-
-function fmtCount(n: number): string {
-  return Intl.NumberFormat('en-US').format(n)
-}
 </script>
 
 <template>
-  <div class="space-y-4">
-    <!-- Loading state -->
-    <template v-if="loading">
-      <div v-for="i in 3" :key="i" class="space-y-1.5">
-        <div class="flex items-center gap-3">
-          <Skeleton class="h-3 w-20 shrink-0" />
-          <Skeleton class="h-2 w-full" />
-          <Skeleton class="h-3 w-10 shrink-0" />
-        </div>
-        <Skeleton class="h-3 w-40 ml-24" />
-      </div>
-    </template>
+  <div v-if="loading" class="space-y-0">
+    <div v-for="i in 3" :key="i" class="flex items-center gap-3 py-1.5">
+      <Skeleton class="h-3 w-24 shrink-0" />
+      <Skeleton class="ml-auto h-3 w-10 shrink-0" />
+      <Skeleton class="h-1.5 w-24 shrink-0" />
+      <Skeleton class="h-3 w-9 shrink-0" />
+    </div>
+  </div>
 
-    <!-- Data state -->
-    <template v-else>
-      <div v-for="row in rows" :key="row.key" class="space-y-1.5">
-        <!-- Bar row -->
-        <div class="flex items-center gap-3">
-          <!-- Label -->
-          <span
-            class="text-xs font-medium w-20 shrink-0"
-            :class="row.textClass"
-            :title="row.tooltip"
-          >
-            {{ row.label }}
-          </span>
+  <div v-else class="space-y-0">
+    <div v-for="row in rows" :key="row.key" class="flex items-center gap-3 py-1.5">
+      <span
+        class="text-sm font-medium flex-1 min-w-0"
+        :class="row.textClass"
+        :title="row.tooltip"
+      >
+        {{ row.label }}
+      </span>
 
-          <!-- Fill bar (single segment — width = % of total) -->
-          <div class="relative flex h-2 w-full overflow-hidden rounded bg-muted">
-            <div
-              :class="[row.barClass, 'h-2 rounded transition-all duration-300']"
-              :style="{ width: `${row.data.pct}%` }"
-            />
-          </div>
+      <span class="text-sm text-right shrink-0">
+        {{ total === 0 ? '—' : row.data.count.toLocaleString() }}
+      </span>
 
-          <!-- Percentage -->
-          <span
-            class="text-sm font-semibold w-12 text-right shrink-0 tabular-nums"
-            :class="row.textClass"
-          >
-            {{ total === 0 ? '—' : `${row.data.pct.toFixed(1)}%` }}
-          </span>
-        </div>
+      <Progress :model-value="row.data.pct" class="h-1.5 w-24 shrink-0" />
 
-        <!-- Count -->
-        <p class="text-xs text-muted-foreground pl-24">
-          <template v-if="total === 0">—</template>
-          <template v-else>
-            {{ fmtCount(row.data.count) }} messages
-          </template>
-        </p>
-      </div>
-    </template>
+      <span class="text-xs text-muted-foreground w-9 text-right shrink-0">
+        {{ total === 0 ? '—' : `${row.data.pct.toFixed(0)}%` }}
+      </span>
+    </div>
   </div>
 </template>
