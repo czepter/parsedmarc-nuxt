@@ -9,23 +9,7 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-// Name normalisation: world-atlas uses different names than what parsedmarc returns
-const NAME_ALIASES: Record<string, string> = {
-  'United States': 'United States of America',
-  'Czech Republic': 'Czechia',
-  'Bosnia and Herzegovina': 'Bosnia and Herz.',
-  'Central African Republic': 'Central African Rep.',
-  'Democratic Republic of the Congo': 'Dem. Rep. Congo',
-  'Dominican Republic': 'Dominican Rep.',
-  'Equatorial Guinea': 'Eq. Guinea',
-  'Falkland Islands': 'Falkland Is.',
-  'South Sudan': 'S. Sudan',
-  'Solomon Islands': 'Solomon Is.',
-  'Eswatini': 'eSwatini',
-  'Swaziland': 'eSwatini',
-  'North Macedonia': 'Macedonia',
-  'Timor-Leste': 'Timor-Leste',
-}
+// ISO_TO_COUNTRY_NAME is auto-imported from app/utils/countryNames.ts
 
 interface PathFeature {
   id: string
@@ -51,7 +35,7 @@ const countData = computed(() => {
   const map = new Map<string, number>()
   for (const c of props.countries) {
     if (!c.name) continue
-    const atlasName = NAME_ALIASES[c.name] ?? c.name
+    const atlasName = ISO_TO_COUNTRY_NAME[c.name] ?? c.name
     map.set(atlasName, c.count)
   }
   return map

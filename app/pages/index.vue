@@ -267,6 +267,7 @@ function fmtPercent(n: number): string {
             label: countryName(c.name),
             count: c.count,
             share: c.share,
+            flag: countryFlag(c.name),
           }))"
         />
       </SectionCard>
