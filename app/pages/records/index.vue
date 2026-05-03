@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useDebounceFn } from '@vueuse/core'
-import type { WindowKey } from '~/types/preferences'
 
 definePageMeta({ layout: 'default' })
 
@@ -33,7 +32,7 @@ const router = useRouter()
 const { selectedWindow, timeRange, setWindow: _setWindow } = useWindowFilter()
 
 // Records page normalises the ToggleGroup single/array emit before delegating.
-function setWindow(w: WindowKey | WindowKey[]) {
+function setWindow(w: string | string[]) {
   const val = Array.isArray(w) ? w[0] : w
   if (!val) return
   _setWindow(val, { resetPage: true })
@@ -253,7 +252,7 @@ function authPillClass(result: string | null): string {
         type="single"
         variant="outline"
         :model-value="selectedWindow"
-        @update:model-value="setWindow($event as WindowKey)"
+        @update:model-value="setWindow($event)"
       >
         <ToggleGroupItem v-for="w in (['24h', '7d', '30d', '90d'] as const)" :key="w" :value="w" class="text-sm">
           {{ w }}
@@ -409,28 +408,32 @@ function authPillClass(result: string | null): string {
                   class="text-sm font-medium"
                 >{{ record.dmarcCompliant ? '✓' : '✗' }}</span>
               </TableCell>
-              <!-- DKIM: auth pill + policy verdict -->
+              <!-- DKIM: auth pill only when it diverges from policy (adds diagnostic info) -->
               <TableCell>
                 <div class="flex items-center gap-1">
-                  <span
-                    v-if="record.dkimAuthResult"
-                    :class="['inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium', authPillClass(record.dkimAuthResult)]"
-                    title="DKIM authentication result"
-                  >{{ record.dkimAuthResult }}</span>
+                  <template v-if="record.dkimAuthResult && record.dkimAuthResult !== record.dkim">
+                    <span
+                      :class="['inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium', authPillClass(record.dkimAuthResult)]"
+                      title="DKIM authentication result"
+                    >{{ record.dkimAuthResult }}</span>
+                    <span class="text-[10px] text-muted-foreground">→</span>
+                  </template>
                   <span
                     :class="['text-xs font-medium', record.dkim === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']"
                     title="DKIM policy (DMARC verdict)"
                   >{{ record.dkim }}</span>
                 </div>
               </TableCell>
-              <!-- SPF: auth pill + policy verdict -->
+              <!-- SPF: auth pill only when it diverges from policy (adds diagnostic info) -->
               <TableCell>
                 <div class="flex items-center gap-1">
-                  <span
-                    v-if="record.spfAuthResult"
-                    :class="['inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium', authPillClass(record.spfAuthResult)]"
-                    title="SPF authentication result"
-                  >{{ record.spfAuthResult }}</span>
+                  <template v-if="record.spfAuthResult && record.spfAuthResult !== record.spf">
+                    <span
+                      :class="['inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium', authPillClass(record.spfAuthResult)]"
+                      title="SPF authentication result"
+                    >{{ record.spfAuthResult }}</span>
+                    <span class="text-[10px] text-muted-foreground">→</span>
+                  </template>
                   <span
                     :class="['text-xs font-medium', record.spf === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']"
                     title="SPF policy (DMARC verdict)"
