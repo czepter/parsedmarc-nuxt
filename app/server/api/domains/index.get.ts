@@ -62,7 +62,7 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
 
   if (domains.length === 0) return { domains: [] }
 
-  const names = domains.map(d => d.name)
+  const policyDomainNames = new Set(domains.map(d => d.name))
 
   // 2a. Message totals per policy domain — group by the reporter's domainId.
   //     This covers domains that own DMARC reports.
@@ -95,6 +95,15 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
     headerFromRows.map(r => [r.headerFrom, Number(r.total)]),
   )
 
+  // headerFrom-only domains: subdomains (or any From: domain) seen in records
+  // but not represented in the Domain table. These send mail under a parent's
+  // policy and never own a DMARC report. We still want to surface them so the
+  // analyst can see their inherited policy and per-subdomain disposition.
+  const headerFromOnlyNames = headerFromRows
+    .map(r => r.headerFrom)
+    .filter(name => name && !policyDomainNames.has(name))
+  const allLookupNames = [...policyDomainNames, ...headerFromOnlyNames]
+
   // 3. Latest report policyP per domain (for drift detection).
   const latestReports = await prisma.aggregateReport.findMany({
     orderBy: { dateBegin: 'desc' },
@@ -123,13 +132,32 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
     dispositionMap.get(row.domainId)![row.disposition] = Number(row.total)
   }
 
-  // 5. Cached lookups (batched by name).
+  // 4b. Disposition counts grouped by headerFrom (last 30 days). Used for
+  //     drift detection on headerFrom-only domains, which have no domainId.
+  const headerFromDispositionRows = await prisma.$queryRaw<
+    Array<{ headerFrom: string; disposition: string; total: number }>
+  >`
+    SELECT ar.headerFrom AS headerFrom, ar.disposition AS disposition,
+      CAST(SUM(ar.count) AS INTEGER) AS total
+    FROM AggregateRecord ar
+    JOIN AggregateReport rep ON rep.id = ar.reportId
+    WHERE rep.dateBegin >= ${fromIso}
+    GROUP BY ar.headerFrom, ar.disposition
+  `
+  const headerFromDispositionMap = new Map<string, Record<string, number>>()
+  for (const row of headerFromDispositionRows) {
+    if (!headerFromDispositionMap.has(row.headerFrom)) headerFromDispositionMap.set(row.headerFrom, {})
+    headerFromDispositionMap.get(row.headerFrom)![row.disposition] = Number(row.total)
+  }
+
+  // 5. Cached lookups (batched by name — covers both policy domains and
+  //    headerFrom-only domains).
   const [dmarcRows, spfRows, mxRows, dkimRows] = await Promise.all([
-    prisma.dmarcLookup.findMany({ where: { domain: { in: names } } }),
-    prisma.spfLookup.findMany({ where: { domain: { in: names } } }),
-    prisma.mxLookup.findMany({ where: { domain: { in: names } } }),
+    prisma.dmarcLookup.findMany({ where: { domain: { in: allLookupNames } } }),
+    prisma.spfLookup.findMany({ where: { domain: { in: allLookupNames } } }),
+    prisma.mxLookup.findMany({ where: { domain: { in: allLookupNames } } }),
     prisma.dkimLookup.findMany({
-      where: { domain: { in: names }, hasKey: true },
+      where: { domain: { in: allLookupNames }, hasKey: true },
       select: { domain: true, selector: true },
     }),
   ])
@@ -148,25 +176,45 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
   //    that haven't been looked up yet are picked up by the daily refresh
   //    Croner; until then, the row simply shows no inherited info.
   const cacheOnlyRefresh = async () => {}
-  const rows: DomainRow[] = await Promise.all(domains.map(async (d) => {
-    const dmarc = dmarcMap.get(d.name) ?? null
-    const spf = spfMap.get(d.name) ?? null
-    const mx = mxMap.get(d.name) ?? null
 
-    // Resolve inherited DMARC only when we KNOW the domain itself has no
-    // record (cached lookup says no record). If no cache row exists at all,
-    // we don't yet know whether the domain has its own record — leave
-    // inheritance null until a lookup populates the cache.
-    const inheritedDmarc = isDmarcMissing(dmarc)
-      ? await findInheritedDmarc(d.name, cacheOnlyRefresh)
+  // Helper: build a row for one domain. `source` is either a Domain-table row
+  // (with its own reports/forensics) or a headerFrom-only row (no Domain
+  // record). For headerFrom-only rows, inheritance is consulted unconditionally
+  // because we have no cache state to reason about — these are subdomains we
+  // never proactively looked up.
+  async function buildRow(source: {
+    name: string
+    domainId: string | null
+    reportCount: number
+    forensicCount: number
+    headerFromOnly: boolean
+  }): Promise<DomainRow> {
+    const dmarc = dmarcMap.get(source.name) ?? null
+    const spf = spfMap.get(source.name) ?? null
+    const mx = mxMap.get(source.name) ?? null
+
+    // For Domain-table rows, only walk inheritance when the cache says
+    // "no record" (record === null). For headerFrom-only rows, walk
+    // unconditionally — surfacing the parent's policy is the whole point.
+    const shouldInherit = source.headerFromOnly || isDmarcMissing(dmarc)
+    const inheritedDmarc = shouldInherit
+      ? await findInheritedDmarc(source.name, cacheOnlyRefresh)
+      : null
+
+    const dispositionCounts = source.domainId
+      ? (dispositionMap.get(source.domainId) ?? {})
+      : (headerFromDispositionMap.get(source.name) ?? {})
+
+    const latestReportPolicy = source.domainId
+      ? (latestPolicyMap.get(source.domainId) ?? null)
       : null
 
     const drift = detectDrift({
       dnsLookup: dmarc
         ? { record: dmarc.record, policy: dmarc.policy, error: dmarc.error }
         : null,
-      latestReportPolicy: latestPolicyMap.get(d.id) ?? null,
-      dispositionCounts: dispositionMap.get(d.id) ?? {},
+      latestReportPolicy,
+      dispositionCounts,
       windowDays: DRIFT_WINDOW_DAYS,
       inheritedPolicy: inheritedDmarc?.policy ?? null,
     })
@@ -181,19 +229,19 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
       }
     }
 
-    // Pick the right message count source: policy domains (with reports of
-    // their own) use the report-grouped count; headerFrom-only domains use
-    // the headerFrom-grouped count so the list shows non-zero totals.
-    const reportCount = d._count.aggregateReports
-    const messageCount = reportCount > 0
-      ? (messageMap.get(d.id) ?? 0)
-      : (headerFromMessageMap.get(d.name) ?? 0)
+    // Message count source: policy domains use report-grouped totals;
+    // headerFrom-only domains use the headerFrom-grouped totals.
+    const messageCount = source.headerFromOnly
+      ? (headerFromMessageMap.get(source.name) ?? 0)
+      : (source.reportCount > 0
+        ? (messageMap.get(source.domainId!) ?? 0)
+        : (headerFromMessageMap.get(source.name) ?? 0))
 
     return {
-      name: d.name,
-      reportCount,
+      name: source.name,
+      reportCount: source.reportCount,
       messageCount,
-      forensicCount: d._count.forensicReports,
+      forensicCount: source.forensicCount,
       dmarc: dmarc
         ? {
             policy: dmarc.policy,
@@ -211,7 +259,7 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
             lookedUpAt: spf.lookedUpAt.toISOString(),
           }
         : null,
-      dkimSelectorCount: dkimCountMap.get(d.name) ?? 0,
+      dkimSelectorCount: dkimCountMap.get(source.name) ?? 0,
       mx: mx
         ? {
             count: mxCount,
@@ -222,7 +270,24 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
       drift: drift.kind,
       inheritedDmarc,
     }
-  }))
+  }
+
+  const rows: DomainRow[] = await Promise.all([
+    ...domains.map(d => buildRow({
+      name: d.name,
+      domainId: d.id,
+      reportCount: d._count.aggregateReports,
+      forensicCount: d._count.forensicReports,
+      headerFromOnly: false,
+    })),
+    ...headerFromOnlyNames.map(name => buildRow({
+      name,
+      domainId: null,
+      reportCount: 0,
+      forensicCount: 0,
+      headerFromOnly: true,
+    })),
+  ])
 
   // Sort by message count desc.
   rows.sort((a, b) => b.messageCount - a.messageCount)
