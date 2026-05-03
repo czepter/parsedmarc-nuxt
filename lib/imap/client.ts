@@ -26,7 +26,7 @@ export class ImapClient {
       host: config.host,
       port: config.port,
       secure: config.secure,
-      auth: { user: config.user, pass: config.pass },
+      auth: { user: config.user, pass: config.pass, loginMethod: 'LOGIN' },
       // Suppress imapflow's internal verbose logging — ingest.ts logs at the appropriate level.
       logger: false,
     })

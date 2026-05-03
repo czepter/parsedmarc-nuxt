@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { ImapFlow } from 'imapflow'
 import prisma from '~~/lib/prisma'
 import { encrypt } from '../../utils/encryption'
+import { imapErrorMessage } from '../../utils/imap-error'
 
 const createSchema = z.object({
   label: z.string().min(1, 'Label is required'),
@@ -29,7 +30,7 @@ export default defineEventHandler(async (event) => {
     host: rest.host,
     port: rest.port,
     secure: rest.tls,
-    auth: { user: rest.username, pass: password },
+    auth: { user: rest.username, pass: password, loginMethod: 'LOGIN' },
     logger: false,
   })
   try {
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event) => {
   catch (err) {
     throw createError({
       statusCode: 422,
-      statusMessage: `Connection test failed: ${(err as Error).message}`,
+      statusMessage: `Connection test failed: ${imapErrorMessage(err)}`,
     })
   }
 

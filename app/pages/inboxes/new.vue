@@ -14,8 +14,43 @@ const form = reactive({
 const error = ref('')
 const loading = ref(false)
 
+type TestStatus = 'idle' | 'loading' | 'success' | 'error'
+const testStatus = ref<TestStatus>('idle')
+const testError = ref('')
+
+watch(() => [form.host, form.port, form.tls, form.username, form.password], () => {
+  testStatus.value = 'idle'
+  testError.value = ''
+})
+
+async function testConnection() {
+  testStatus.value = 'loading'
+  testError.value = ''
+  error.value = ''
+  try {
+    await $fetch('/api/inboxes/test', {
+      method: 'POST',
+      body: {
+        host: form.host,
+        port: Number(form.port),
+        tls: form.tls,
+        username: form.username,
+        password: form.password,
+      },
+    })
+    testStatus.value = 'success'
+  }
+  catch (e: unknown) {
+    const err = e as { data?: { statusMessage?: string } }
+    testError.value = err.data?.statusMessage ?? 'Connection test failed'
+    testStatus.value = 'error'
+  }
+}
+
 async function submit() {
   error.value = ''
+  testStatus.value = 'idle'
+  testError.value = ''
   loading.value = true
   try {
     await $fetch('/api/inboxes', {
@@ -88,10 +123,23 @@ async function submit() {
             <Checkbox id="enabled" :checked="form.enabled" @update:checked="form.enabled = $event" />
             <Label for="enabled">Enable this inbox</Label>
           </div>
+          <p v-if="testStatus === 'success'" class="text-sm text-green-600 dark:text-green-400">✓ Connection successful</p>
+          <p v-if="testStatus === 'error'" class="text-destructive text-sm">{{ testError }}</p>
           <p v-if="error" class="text-destructive text-sm">{{ error }}</p>
-          <Button type="submit" class="w-full" :disabled="loading">
-            {{ loading ? 'Testing connection…' : 'Save inbox' }}
-          </Button>
+          <div class="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              class="flex-1"
+              :disabled="testStatus === 'loading' || loading || !form.host || !form.username || !form.password"
+              @click="testConnection"
+            >
+              {{ testStatus === 'loading' ? 'Testing…' : 'Test Connection' }}
+            </Button>
+            <Button type="submit" class="flex-1" :disabled="loading || testStatus === 'loading'">
+              {{ loading ? 'Saving…' : 'Save inbox' }}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
