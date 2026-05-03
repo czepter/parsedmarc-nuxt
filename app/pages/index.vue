@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown, Check } from 'lucide-vue-next'
 import type { WindowKey } from '~/types/preferences'
 
 definePageMeta({ layout: 'default' })
@@ -30,7 +31,15 @@ interface AuthCategory { count: number; pct: number }
 interface AuthResponse { pass: AuthCategory; misconfigured: AuthCategory; spoofed: AuthCategory; total: number }
 // ── URL state + window persistence ────────────────────────────────────────
 const route = useRoute()
-const { selectedWindow, timeRange, setWindow } = useWindowFilter()
+const { selectedWindow, timeRange, setWindow, QUICK_WINDOWS, MORE_WINDOW_LABELS } = useWindowFilter()
+
+const moreDialogOpen = ref(false)
+const isMoreActive = computed(() => !QUICK_WINDOWS.includes(selectedWindow.value))
+const moreLabel = computed(() => MORE_WINDOW_LABELS[selectedWindow.value] ?? 'More')
+
+function handleMoreApply(window: WindowKey, from?: number, to?: number) {
+  setWindow(window, { from, to })
+}
 
 // ── data fetching ──────────────────────────────────────────────────────────
 const statsKey = computed(
@@ -111,7 +120,7 @@ function fmtDelta(current: number, previous: number, unit = ''): string {
   if (previous === 0) return '—'
   const diff = current - previous
   const sign = diff >= 0 ? '+' : ''
-  return `${sign}${diff.toFixed(unit === 'pp' ? 1 : 0)}${unit} vs prior`
+  return `${sign}${diff.toFixed(unit === 'pp' ? 1 : 0)}${unit}`
 }
 
 function fmtNumber(n: number): string {
@@ -132,20 +141,48 @@ function fmtPercent(n: number): string {
     <!-- Header row -->
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="text-2xl font-semibold">Dashboard</h1>
-      <ToggleGroup
-        type="single"
-        :model-value="selectedWindow"
-        variant="outline"
-        @update:model-value="v => v && setWindow(v as WindowKey)"
-      >
-        <ToggleGroupItem
-          v-for="w in (['24h', '7d', '30d', '90d'] as const)"
-          :key="w"
-          :value="w"
-          class="px-3 py-1 text-sm"
-        >{{ w }}</ToggleGroupItem>
-      </ToggleGroup>
+
+      <div class="flex items-center">
+        <ToggleGroup
+          type="single"
+          :model-value="isMoreActive ? '' : selectedWindow"
+          variant="outline"
+          class="rounded-r-none"
+          @update:model-value="v => v && setWindow(v as WindowKey)"
+        >
+          <ToggleGroupItem
+            v-for="w in QUICK_WINDOWS"
+            :key="w"
+            :value="w"
+            class="px-3 py-1 text-sm"
+          >{{ w }}</ToggleGroupItem>
+        </ToggleGroup>
+
+        <!-- More button — active state matches selected ToggleGroupItem style -->
+        <button
+          :class="[
+            'flex items-center gap-1.5 border border-l-0 px-3 py-1 text-sm rounded-r-md h-9 transition-colors',
+            isMoreActive
+              ? 'bg-foreground text-background border-foreground'
+              : 'bg-background hover:bg-accent border-input',
+          ]"
+          @click="moreDialogOpen = true"
+        >
+          <Check v-if="isMoreActive" class="size-3 shrink-0" />
+          {{ isMoreActive ? moreLabel : 'More' }}
+          <ChevronDown v-if="!isMoreActive" class="size-3 shrink-0" />
+        </button>
+      </div>
     </div>
+
+    <DateRangeDialog
+      :open="moreDialogOpen"
+      :current-window="selectedWindow"
+      :current-from="selectedWindow === 'custom' ? timeRange.from : undefined"
+      :current-to="selectedWindow === 'custom' ? timeRange.to : undefined"
+      @update:open="moreDialogOpen = $event"
+      @apply="handleMoreApply"
+    />
 
     <!-- Summary tiles -->
     <div
