@@ -33,4 +33,7 @@ coverage/
 playwright-report/
 test-results/
 
+# Git worktrees
+.worktrees/
+
 /app/generated/prisma
