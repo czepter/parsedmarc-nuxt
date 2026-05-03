@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useDebounceFn } from '@vueuse/core'
+import type { WindowKey } from '~/types/preferences'
+
 definePageMeta({ layout: 'default' })
 
 // ── types ─────────────────────────────────────────────────────────────────
@@ -25,24 +27,17 @@ interface RecordsResponse {
   totalPages: number
 }
 
-// ── URL state ──────────────────────────────────────────────────────────────
+// ── URL state + window persistence ────────────────────────────────────────
 const route = useRoute()
 const router = useRouter()
+const { selectedWindow, timeRange, setWindow: _setWindow } = useWindowFilter()
 
-type WindowKey = '24h' | '7d' | '30d' | '90d'
-const WINDOWS: Record<WindowKey, number> = {
-  '24h': 86400,
-  '7d': 7 * 86400,
-  '30d': 30 * 86400,
-  '90d': 90 * 86400,
+// Records page normalises the ToggleGroup single/array emit before delegating.
+function setWindow(w: WindowKey | WindowKey[]) {
+  const val = Array.isArray(w) ? w[0] : w
+  if (!val) return
+  _setWindow(val, { resetPage: true })
 }
-
-const selectedWindow = computed<WindowKey>(() => {
-  const w = route.query.window as string
-  return (Object.keys(WINDOWS) as WindowKey[]).includes(w as WindowKey)
-    ? (w as WindowKey)
-    : '7d'
-})
 
 const currentPage = computed(() => Number(route.query.page ?? 1))
 
@@ -73,25 +68,6 @@ const spfFilter = computed<string>(() => {
 // Client-side text search (filters current page; debounced URL sync)
 const ipSearch = ref((route.query.ip as string) ?? '')
 const headerFromSearch = ref((route.query.headerFrom as string) ?? '')
-
-// Same useState key as index.vue — if the user navigated from the dashboard
-// the value is already set; if this page is the entry point it is initialised here.
-// Either way, server and client share the exact same timestamp → identical cache keys.
-const _initTime = useState('dashboardInitTime', () => Math.floor(Date.now() / 1000))
-
-const timeRange = computed(() => {
-  const to = _initTime.value
-  const from = to - WINDOWS[selectedWindow.value]
-  return { from, to }
-})
-
-// ── navigate helpers ───────────────────────────────────────────────────────
-function setWindow(w: WindowKey | WindowKey[]) {
-  // ToggleGroup single emits a string or array; normalise
-  const val = Array.isArray(w) ? w[0] : w
-  if (!val) return
-  router.push({ query: { ...route.query, window: val, page: 1 } })
-}
 
 function setPage(p: number) {
   router.push({ query: { ...route.query, page: p } })
