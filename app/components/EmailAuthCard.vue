@@ -48,6 +48,8 @@ interface EmailAuthSnapshot {
   spf: SpfLookup | null
   dkim: DkimLookup[]
   mx: MxLookup | null
+  inheritedDmarc: { from: string; lookup: DmarcLookup } | null
+  inheritedSpf: { from: string; lookup: SpfLookup } | null
 }
 
 const props = defineProps<{
@@ -74,23 +76,21 @@ async function refreshAll() {
   }
 }
 
-// ── DMARC styling
-const dmarcPolicyClass = computed(() => {
-  const p = data.value?.dmarc?.policy
-  if (p === 'reject') return 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
-  if (p === 'quarantine') return 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-  if (p === 'none') return 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+// ── DMARC / SPF styling helpers (plain functions so they work for either
+//    the domain's own record or an inherited parent record).
+function dmarcPolicyClass(policy: string | null | undefined): string {
+  if (policy === 'reject') return 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+  if (policy === 'quarantine') return 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+  if (policy === 'none') return 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
   return 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
-})
+}
 
-// ── SPF qualifier-all styling
-const spfQualifierClass = computed(() => {
-  const q = data.value?.spf?.qualifierAll
-  if (q === '-all' || q === '~all') return 'text-green-700 dark:text-green-400'
-  if (q === '?all') return 'text-amber-700 dark:text-amber-400'
-  if (q === '+all') return 'text-red-700 dark:text-red-400'
+function spfQualifierClass(qualifier: string | null | undefined): string {
+  if (qualifier === '-all' || qualifier === '~all') return 'text-green-700 dark:text-green-400'
+  if (qualifier === '?all') return 'text-amber-700 dark:text-amber-400'
+  if (qualifier === '+all') return 'text-red-700 dark:text-red-400'
   return 'text-muted-foreground'
-})
+}
 
 const spfIncludeWarn = computed(() => {
   const c = data.value?.spf?.includeCount ?? 0
@@ -155,11 +155,20 @@ function relativeTime(iso: string | null | undefined): string {
         <section class="space-y-2">
           <div class="flex items-center gap-3">
             <h3 class="text-sm font-semibold">DMARC</h3>
+            <!-- Domain has its own record -->
             <span
               v-if="data.dmarc?.record"
-              :class="['inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', dmarcPolicyClass]"
+              :class="['inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', dmarcPolicyClass(data.dmarc.policy)]"
             >
               p={{ data.dmarc.policy ?? '—' }}<span v-if="data.dmarc.pct !== null && data.dmarc.pct < 100">; pct={{ data.dmarc.pct }}</span>
+            </span>
+            <!-- No own record but a PSL ancestor publishes one (RFC 7489 §6.6.3 fallback) -->
+            <span
+              v-else-if="data.inheritedDmarc"
+              :class="['inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium italic opacity-80', dmarcPolicyClass(data.inheritedDmarc.lookup.policy)]"
+              :title="`Inherited from ${data.inheritedDmarc.from} via the DMARC organisational-domain fallback (RFC 7489 §6.6.3).`"
+            >
+              ↪ p={{ data.inheritedDmarc.lookup.policy ?? '—' }}<span v-if="data.inheritedDmarc.lookup.pct !== null && data.inheritedDmarc.lookup.pct < 100">; pct={{ data.inheritedDmarc.lookup.pct }}</span>
             </span>
             <span
               v-else
@@ -168,35 +177,54 @@ function relativeTime(iso: string | null | undefined): string {
               No record ({{ data.dmarc?.error ?? 'not looked up' }})
             </span>
             <span class="ml-auto text-xs text-muted-foreground">
-              {{ relativeTime(data.dmarc?.lookedUpAt) }}
+              {{ relativeTime((data.dmarc?.record ? data.dmarc?.lookedUpAt : data.inheritedDmarc?.lookup.lookedUpAt) ?? data.dmarc?.lookedUpAt) }}
             </span>
           </div>
 
-          <div v-if="data.dmarc?.record" class="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-3">
-            <div v-if="data.dmarc.subdomainPolicy">
-              <span class="text-muted-foreground">sp:</span> {{ data.dmarc.subdomainPolicy }}
-            </div>
-            <div v-if="data.dmarc.aspf">
-              <span class="text-muted-foreground">aspf:</span> {{ data.dmarc.aspf }}
-            </div>
-            <div v-if="data.dmarc.adkim">
-              <span class="text-muted-foreground">adkim:</span> {{ data.dmarc.adkim }}
-            </div>
-            <div v-if="data.dmarc.fo">
-              <span class="text-muted-foreground">fo:</span> {{ data.dmarc.fo }}
-            </div>
-            <div v-if="data.dmarc.rua" class="col-span-2 truncate">
-              <span class="text-muted-foreground">rua:</span> <span class="font-mono">{{ data.dmarc.rua }}</span>
-            </div>
-            <div v-if="data.dmarc.ruf" class="col-span-2 truncate">
-              <span class="text-muted-foreground">ruf:</span> <span class="font-mono">{{ data.dmarc.ruf }}</span>
-            </div>
+          <!-- Inheritance hint line -->
+          <p
+            v-if="!data.dmarc?.record && data.inheritedDmarc"
+            class="text-xs text-muted-foreground"
+          >
+            Inherited from <span class="font-mono">{{ data.inheritedDmarc.from }}</span> — RFC 7489 organisational-domain fallback. Receivers without a record at <span class="font-mono">{{ data.domain }}</span> apply this policy.
+          </p>
+
+          <!-- Parsed tags grid: own record OR inherited record -->
+          <div
+            v-if="data.dmarc?.record || data.inheritedDmarc"
+            class="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-3"
+            :class="{ 'opacity-80 italic': !data.dmarc?.record && data.inheritedDmarc }"
+          >
+            <template v-for="d in [data.dmarc?.record ? data.dmarc : data.inheritedDmarc?.lookup].filter(Boolean) as DmarcLookup[]" :key="d.domain">
+              <div v-if="d.subdomainPolicy">
+                <span class="text-muted-foreground">sp:</span> {{ d.subdomainPolicy }}
+              </div>
+              <div v-if="d.aspf">
+                <span class="text-muted-foreground">aspf:</span> {{ d.aspf }}
+              </div>
+              <div v-if="d.adkim">
+                <span class="text-muted-foreground">adkim:</span> {{ d.adkim }}
+              </div>
+              <div v-if="d.fo">
+                <span class="text-muted-foreground">fo:</span> {{ d.fo }}
+              </div>
+              <div v-if="d.rua" class="col-span-2 truncate">
+                <span class="text-muted-foreground">rua:</span> <span class="font-mono">{{ d.rua }}</span>
+              </div>
+              <div v-if="d.ruf" class="col-span-2 truncate">
+                <span class="text-muted-foreground">ruf:</span> <span class="font-mono">{{ d.ruf }}</span>
+              </div>
+            </template>
           </div>
 
           <code
             v-if="data.dmarc?.record"
             class="block break-all rounded bg-muted px-2 py-1 font-mono text-[11px] leading-relaxed"
           >{{ data.dmarc.record }}</code>
+          <code
+            v-else-if="data.inheritedDmarc"
+            class="block break-all rounded bg-muted/60 px-2 py-1 font-mono text-[11px] leading-relaxed italic opacity-80"
+          >{{ data.inheritedDmarc.lookup.record }}</code>
         </section>
 
         <Separator />
@@ -205,8 +233,9 @@ function relativeTime(iso: string | null | undefined): string {
         <section class="space-y-2">
           <div class="flex items-center gap-3">
             <h3 class="text-sm font-semibold">SPF</h3>
+            <!-- Domain has its own SPF -->
             <span v-if="data.spf?.record" class="text-xs">
-              <span :class="['font-mono', spfQualifierClass]">
+              <span :class="['font-mono', spfQualifierClass(data.spf.qualifierAll)]">
                 {{ data.spf.qualifierAll ?? '(no all)' }}
               </span>
               <span class="text-muted-foreground">·</span>
@@ -217,6 +246,20 @@ function relativeTime(iso: string | null | undefined): string {
                 (>10 lookup limit)
               </span>
             </span>
+            <!-- Reference SPF from a parent (informational — SPF doesn't actually inherit) -->
+            <span
+              v-else-if="data.inheritedSpf"
+              class="text-xs italic opacity-70"
+              :title="`Reference only: ${data.inheritedSpf.from} publishes SPF, but SPF does NOT inherit (RFC 7208) — receivers look up SPF at exactly the Mail-From domain.`"
+            >
+              <span :class="['font-mono', spfQualifierClass(data.inheritedSpf.lookup.qualifierAll)]">
+                ↪ {{ data.inheritedSpf.lookup.qualifierAll ?? '(no all)' }}
+              </span>
+              <span class="text-muted-foreground">·</span>
+              <span>
+                {{ data.inheritedSpf.lookup.includeCount ?? 0 }} include{{ (data.inheritedSpf.lookup.includeCount ?? 0) === 1 ? '' : 's' }}
+              </span>
+            </span>
             <span
               v-else
               class="inline-flex items-center rounded-full border bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 px-2 py-0.5 text-xs font-medium"
@@ -224,13 +267,26 @@ function relativeTime(iso: string | null | undefined): string {
               No record ({{ data.spf?.error ?? 'not looked up' }})
             </span>
             <span class="ml-auto text-xs text-muted-foreground">
-              {{ relativeTime(data.spf?.lookedUpAt) }}
+              {{ relativeTime((data.spf?.record ? data.spf?.lookedUpAt : data.inheritedSpf?.lookup.lookedUpAt) ?? data.spf?.lookedUpAt) }}
             </span>
           </div>
+
+          <!-- Reference-only caveat for inherited SPF -->
+          <p
+            v-if="!data.spf?.record && data.inheritedSpf"
+            class="text-xs text-muted-foreground"
+          >
+            Parent <span class="font-mono">{{ data.inheritedSpf.from }}</span> publishes SPF — shown for reference. SPF does <strong>not</strong> inherit per RFC 7208; mail from <span class="font-mono">{{ data.domain }}</span> still fails SPF unless the subdomain publishes its own record.
+          </p>
+
           <code
             v-if="data.spf?.record"
             class="block break-all rounded bg-muted px-2 py-1 font-mono text-[11px] leading-relaxed"
           >{{ data.spf.record }}</code>
+          <code
+            v-else-if="data.inheritedSpf"
+            class="block break-all rounded bg-muted/60 px-2 py-1 font-mono text-[11px] leading-relaxed italic opacity-80"
+          >{{ data.inheritedSpf.lookup.record }}</code>
         </section>
 
         <Separator />

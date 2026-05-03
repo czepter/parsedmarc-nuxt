@@ -39,6 +39,18 @@ export interface EmailAuthSnapshot {
   spf: SpfLookup | null
   dkim: DkimLookup[]
   mx: MxLookup | null
+  /**
+   * Full DMARC row inherited from a PSL ancestor when this domain has no
+   * record of its own. RFC 7489 §6.6.3 describes the receiver-side fallback
+   * to the organisational domain; this surfaces the same record in the UI.
+   */
+  inheritedDmarc: InheritedDmarcLookup | null
+  /**
+   * Full SPF row from a PSL ancestor when this domain has no record of its
+   * own. SPF does NOT inherit in the protocol — receivers look up SPF at
+   * exactly the Mail-From domain. This is informational reference only.
+   */
+  inheritedSpf: InheritedSpfLookup | null
 }
 
 /** A DMARC policy inherited from an ancestor domain via PSL-aware walking. */
@@ -49,6 +61,18 @@ export interface InheritedDmarc {
   policy: string | null
   /** Published `pct` value, or null if absent. */
   pct: number | null
+}
+
+/** Full inherited DMARC cache row, keyed back to the ancestor it came from. */
+export interface InheritedDmarcLookup {
+  from: string
+  lookup: DmarcLookup
+}
+
+/** Full inherited SPF cache row (informational reference — SPF doesn't inherit). */
+export interface InheritedSpfLookup {
+  from: string
+  lookup: SpfLookup
 }
 
 interface GetOptions {
@@ -118,7 +142,46 @@ export async function getEmailAuth(
     }),
   ])
 
-  return { domain, dmarc, spf, mx, dkim }
+  // Inheritance: walk PSL ancestors only when the local row is missing or has
+  // no record. We share one walk for both DMARC and SPF since they typically
+  // live on the same organisational domain — saves a DB round-trip per
+  // candidate when both are needed. Parents not yet cached trigger a live DNS
+  // refresh so first-access subdomains get inheritance immediately rather
+  // than having to wait for the daily cron.
+  const dmarcMissing = !dmarc || dmarc.record === null
+  const spfMissing = !spf || spf.record === null
+  let inheritedDmarc: InheritedDmarcLookup | null = null
+  let inheritedSpf: InheritedSpfLookup | null = null
+
+  if (dmarcMissing || spfMissing) {
+    for (const candidate of getDmarcInheritanceCandidates(domain)) {
+      if ((!dmarcMissing || inheritedDmarc) && (!spfMissing || inheritedSpf)) break
+
+      if (dmarcMissing && !inheritedDmarc) {
+        let row = await prisma.dmarcLookup.findUnique({ where: { domain: candidate } })
+        if (!row) {
+          await refreshDmarc(candidate)
+          row = await prisma.dmarcLookup.findUnique({ where: { domain: candidate } })
+        }
+        if (row && !row.error && row.record) {
+          inheritedDmarc = { from: candidate, lookup: row }
+        }
+      }
+
+      if (spfMissing && !inheritedSpf) {
+        let row = await prisma.spfLookup.findUnique({ where: { domain: candidate } })
+        if (!row) {
+          await refreshSpf(candidate)
+          row = await prisma.spfLookup.findUnique({ where: { domain: candidate } })
+        }
+        if (row && !row.error && row.record) {
+          inheritedSpf = { from: candidate, lookup: row }
+        }
+      }
+    }
+  }
+
+  return { domain, dmarc, spf, mx, dkim, inheritedDmarc, inheritedSpf }
 }
 
 /**
