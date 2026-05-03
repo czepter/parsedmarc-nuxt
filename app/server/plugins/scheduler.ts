@@ -1,5 +1,6 @@
 import { Cron } from 'croner'
 import prisma from '~~/lib/prisma'
+import { refreshAllEmailAuth } from '../utils/dns-lookup'
 import { decrypt } from '../utils/encryption'
 import { runIngest } from '../utils/ingest'
 
@@ -63,6 +64,22 @@ export default defineNitroPlugin(() => {
           (inboxErr as Error).message,
         )
       }
+    }
+  })
+
+  // --- Daily DNS refresh for email-auth records ---
+  // Force-refreshes DMARC/SPF/DKIM/MX for every reported-for domain at 03:00
+  // UTC (off-peak). The 1h read-TTL on getEmailAuth still catches anything
+  // missed (server downtime, new domain added mid-day).
+  new Cron('0 3 * * *', { timezone: 'UTC' }, async () => {
+    try {
+      const { refreshed, errors } = await refreshAllEmailAuth()
+      console.info(
+        `[scheduler] Email-auth refresh complete: ${refreshed} domains, ${errors} errors`,
+      )
+    }
+    catch (err) {
+      console.error('[scheduler] Email-auth refresh failed:', (err as Error).message)
     }
   })
 

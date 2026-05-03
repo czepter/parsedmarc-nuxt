@@ -106,6 +106,12 @@ function passRateClass(rate: number): string {
         </Card>
       </div>
 
+      <!-- Drift callout (hidden when aligned) -->
+      <DriftDetail :domain="data.name" />
+
+      <!-- Email auth (DMARC / SPF / DKIM / MX) -->
+      <EmailAuthCard :domain="data.name" />
+
       <!-- Top IPs table -->
       <div class="space-y-2">
         <h2 class="text-base font-semibold">Top Source IPs</h2>
