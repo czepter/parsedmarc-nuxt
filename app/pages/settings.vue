@@ -1,4 +1,14 @@
 <script setup lang="ts">
+import AlertDialog from '~/components/ui/alert-dialog/AlertDialog.vue'
+import AlertDialogTrigger from '~/components/ui/alert-dialog/AlertDialogTrigger.vue'
+import AlertDialogContent from '~/components/ui/alert-dialog/AlertDialogContent.vue'
+import AlertDialogHeader from '~/components/ui/alert-dialog/AlertDialogHeader.vue'
+import AlertDialogFooter from '~/components/ui/alert-dialog/AlertDialogFooter.vue'
+import AlertDialogTitle from '~/components/ui/alert-dialog/AlertDialogTitle.vue'
+import AlertDialogDescription from '~/components/ui/alert-dialog/AlertDialogDescription.vue'
+import AlertDialogAction from '~/components/ui/alert-dialog/AlertDialogAction.vue'
+import AlertDialogCancel from '~/components/ui/alert-dialog/AlertDialogCancel.vue'
+
 definePageMeta({ layout: 'default' })
 
 interface GeoipStatus {
@@ -42,6 +52,49 @@ async function changePassword() {
   }
   finally {
     pwLoading.value = false
+  }
+}
+
+// ── Reset + Rescan ─────────────────────────────────────────────────────────
+type ResetPhase = 'idle' | 'resetting' | 'rescanning' | 'done' | 'error'
+const resetPhase = ref<ResetPhase>('idle')
+const resetLogs = ref<Array<{ level: string; message: string; ts: string }>>([])
+const resetSummary = ref<{ totalMessages: number; totalReports: number; totalDuplicates: number } | null>(null)
+const resetError = ref('')
+
+function startReset() {
+  resetPhase.value = 'resetting'
+  resetLogs.value = []
+  resetSummary.value = null
+  resetError.value = ''
+
+  if (!import.meta.client) return
+  const es = new EventSource('/api/settings/reset-and-rescan-stream')
+
+  es.onmessage = (event) => {
+    const msg = JSON.parse(event.data)
+    if (msg.type === 'reset-done') {
+      resetPhase.value = 'rescanning'
+    }
+    else if (msg.type === 'log') {
+      resetLogs.value.push({ level: msg.level, message: msg.message, ts: msg.ts })
+    }
+    else if (msg.type === 'done') {
+      resetSummary.value = { totalMessages: msg.totalMessages, totalReports: msg.totalReports, totalDuplicates: msg.totalDuplicates ?? 0 }
+      resetPhase.value = 'done'
+      es.close()
+    }
+    else if (msg.type === 'error') {
+      resetError.value = msg.message
+      resetPhase.value = 'error'
+      es.close()
+    }
+  }
+
+  es.onerror = () => {
+    resetError.value = 'Connection lost — check server logs.'
+    resetPhase.value = 'error'
+    es.close()
   }
 }
 
@@ -183,6 +236,88 @@ function downloadBackup() {
           <Button variant="outline" size="sm" @click="downloadBackup">
             Download SQLite snapshot
           </Button>
+        </CardContent>
+      </Card>
+
+      <!-- ── Reset + Rescan card ──────────────────────────────── -->
+      <Card class="border-destructive/40">
+        <CardContent class="pt-6 space-y-4">
+          <div>
+            <h2 class="text-base font-semibold text-destructive">Reset Database</h2>
+            <p class="text-muted-foreground mt-0.5 text-sm">
+              Wipes all DMARC report data (aggregate, forensic, domains, geo) then re-imports every
+              message from all enabled inboxes. Inbox configs and your account are preserved.
+            </p>
+          </div>
+
+          <AlertDialog>
+            <AlertDialogTrigger as-child>
+              <Button
+                variant="destructive"
+                size="sm"
+                :disabled="resetPhase !== 'idle' && resetPhase !== 'done' && resetPhase !== 'error'"
+              >
+                Reset &amp; Re-import
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset all DMARC data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently deletes all aggregate reports, forensic reports, domains, and geo
+                  data, then re-imports every message from your enabled inboxes. This cannot be
+                  undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction @click="startReset">
+                  Yes, reset &amp; re-import
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <!-- Progress panel (browser-only — EventSource) -->
+          <ClientOnly>
+            <div v-if="resetPhase !== 'idle'" class="space-y-3">
+              <!-- Phase label -->
+              <p class="text-sm font-medium">
+                <span v-if="resetPhase === 'resetting'">Resetting database…</span>
+                <span v-else-if="resetPhase === 'rescanning'">Re-importing messages…</span>
+                <span v-else-if="resetPhase === 'done'" class="text-green-700 dark:text-green-400">
+                  ✓ Done —
+                  {{ resetSummary?.totalMessages }} message(s) seen,
+                  {{ resetSummary?.totalReports }} report(s) imported
+                  <template v-if="resetSummary && resetSummary.totalDuplicates > 0">
+                    , {{ resetSummary.totalDuplicates }} duplicate(s) skipped
+                  </template>
+                </span>
+                <span v-else-if="resetPhase === 'error'" class="text-destructive">
+                  Error: {{ resetError }}
+                </span>
+              </p>
+
+              <!-- Log lines -->
+              <div
+                v-if="resetLogs.length > 0"
+                class="rounded-md border bg-muted/40 p-3 max-h-64 overflow-y-auto font-mono text-xs space-y-0.5"
+              >
+                <div
+                  v-for="(entry, i) in resetLogs"
+                  :key="i"
+                  :class="{
+                    'text-muted-foreground': entry.level === 'info',
+                    'text-green-700 dark:text-green-400': entry.level === 'success',
+                    'text-yellow-600 dark:text-yellow-400': entry.level === 'warn',
+                    'text-destructive': entry.level === 'error',
+                  }"
+                >
+                  {{ entry.message }}
+                </div>
+              </div>
+            </div>
+          </ClientOnly>
         </CardContent>
       </Card>
     </template>

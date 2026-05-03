@@ -62,7 +62,7 @@ const { data: reportingOrgsData, status: reportingOrgsStatus, refresh: refreshRe
 const { data: authData, status: authStatus, refresh: refreshAuth } = await useFetch<{ dkim: AuthDimension; spf: AuthDimension }>(authKey, { watch: false, key: authKey })
 
 const heatmapKey = computed(() => `/api/dashboard/heatmap?from=${timeRange.value.from}&to=${timeRange.value.to}`)
-const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ matrix: number[][] }>(heatmapKey, { watch: false, key: heatmapKey })
+const { data: heatmapData, status: heatmapStatus, refresh: refreshHeatmap } = await useFetch<{ entries: Array<{ date: string; dow: number; total: number }> }>(heatmapKey, { watch: false, key: heatmapKey })
 
 watch(selectedWindow, () => {
   refreshStats()
@@ -288,7 +288,9 @@ function fmtPercent(n: number): string {
         <ClientOnly>
           <HeatMap
             v-if="heatmapStatus === 'success' && heatmapData"
-            :matrix="heatmapData.matrix"
+            :entries="heatmapData.entries"
+            :from="timeRange.from"
+            :to="timeRange.to"
           />
           <Skeleton v-else class="h-[130px] w-full rounded-md" />
         </ClientOnly>

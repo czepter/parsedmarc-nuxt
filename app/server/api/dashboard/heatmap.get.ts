@@ -1,7 +1,13 @@
 import prisma from '~~/lib/prisma'
 
+interface HeatmapEntry {
+  date: string
+  dow: number
+  total: number
+}
+
 interface HeatmapResponse {
-  matrix: number[][]  // matrix[dow][hour], dow: 0=Mon…6=Sun, hour: 0–23
+  entries: HeatmapEntry[]
 }
 
 export default defineEventHandler(async (event): Promise<HeatmapResponse> => {
@@ -21,29 +27,24 @@ export default defineEventHandler(async (event): Promise<HeatmapResponse> => {
   // strftime('%w') returns '0'=Sunday…'6'=Saturday
   // Remap to Mon=0…Sun=6: (dow + 6) % 7
   const rows = await prisma.$queryRaw<
-    Array<{ dow: number; hour: number; total: number }>
+    Array<{ date: string; dow: number; total: number }>
   >`
     SELECT
+      date(rep.dateBegin) AS date,
       (CAST(strftime('%w', rep.dateBegin) AS INTEGER) + 6) % 7 AS dow,
-      CAST(strftime('%H', rep.dateBegin) AS INTEGER) AS hour,
       CAST(SUM(ar.count) AS INTEGER) AS total
     FROM AggregateRecord ar
     JOIN AggregateReport rep ON rep.id = ar.reportId
     WHERE rep.dateBegin >= ${fromIso} AND rep.dateBegin < ${toIso}
-    GROUP BY dow, hour
+    GROUP BY date, dow
+    ORDER BY date
   `
 
-  // Initialise a full 7×24 zeros matrix
-  const matrix: number[][] = Array.from({ length: 7 }, () => new Array(24).fill(0))
-
-  for (const row of rows) {
-    const dow = Number(row.dow)
-    const hour = Number(row.hour)
-    const total = Number(row.total)
-    if (dow >= 0 && dow <= 6 && hour >= 0 && hour <= 23) {
-      matrix[dow][hour] = total
-    }
+  return {
+    entries: rows.map(r => ({
+      date: String(r.date),
+      dow: Number(r.dow),
+      total: Number(r.total),
+    })),
   }
-
-  return { matrix }
 })

@@ -50,7 +50,20 @@ function buildOpts(width: number): import('uplot').Options {
       },
     ],
     axes: [
-      { stroke: 'var(--color-muted-foreground)' },
+      {
+        stroke: 'var(--color-muted-foreground)',
+        // Show time-of-day for single-day (hourly) data; date-only for multi-day spans
+        values: (_u: unknown, splits: number[]) => {
+          const span = splits.length >= 2 ? splits[splits.length - 1]! - splits[0]! : 0
+          return splits.map((s) => {
+            const d = new Date(s * 1000)
+            if (span <= 86400) {
+              return `${String(d.getHours()).padStart(2, '0')}:00`
+            }
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          })
+        },
+      },
       {
         label: 'Messages',
         stroke: 'var(--color-muted-foreground)',
