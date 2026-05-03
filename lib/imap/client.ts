@@ -53,6 +53,21 @@ export class ImapClient {
   }
 
   /**
+   * Return UIDs of ALL messages in the given mailbox (seen and unseen).
+   * Used by re-import mode. The lock is acquired and released internally.
+   */
+  async getAllUids(mailbox = 'INBOX'): Promise<number[]> {
+    const lock = await this.client.getMailboxLock(mailbox)
+    try {
+      const uids = await this.client.search({ all: true }, { uid: true })
+      return (uids as number[]) ?? []
+    }
+    finally {
+      lock.release()
+    }
+  }
+
+  /**
    * Fetch the raw source (RFC 822 bytes) for a list of UIDs.
    * All UIDs must be from the same mailbox. Acquires and releases the mailbox lock.
    */

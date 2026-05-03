@@ -43,17 +43,17 @@ defineProps<{
       <span class="text-xs text-muted-foreground w-4 shrink-0 text-right">{{ index + 1 }}</span>
 
       <!-- Label + sublabel -->
-      <span class="min-w-0 flex-1 flex items-baseline gap-1">
+      <span class="min-w-0 flex-1 flex items-baseline gap-1 overflow-hidden">
         <Button
           v-if="item.href"
           variant="link"
           size="sm"
-          class="p-0 h-auto text-sm font-medium leading-none truncate"
+          class="p-0 h-auto text-sm font-medium leading-none truncate min-w-0"
           as-child
         >
           <NuxtLink :to="item.href">{{ item.label }}</NuxtLink>
         </Button>
-        <span v-else class="text-sm font-medium truncate">{{ item.label }}</span>
+        <span v-else class="text-sm font-medium truncate min-w-0">{{ item.label }}</span>
         <span v-if="item.sublabel" class="text-xs text-muted-foreground shrink-0">{{ item.sublabel }}</span>
       </span>
 
