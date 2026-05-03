@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: false })
+
 // Guard: if a user already exists, this deployment is already set up.
 const { data: status } = await useAsyncData('setup-status', () =>
   $fetch<{ exists: boolean }>('/api/auth/setup-status'),

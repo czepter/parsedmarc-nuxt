@@ -69,6 +69,17 @@ async function logout() {
             Inboxes
           </NuxtLink>
           <NuxtLink
+            :to="navTo('/domains')"
+            :class="[
+              'transition-colors',
+              isActive('/domains')
+                ? 'text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground',
+            ]"
+          >
+            Domains
+          </NuxtLink>
+          <NuxtLink
             :to="navTo('/settings')"
             :class="[
               'transition-colors',

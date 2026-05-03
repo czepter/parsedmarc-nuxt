@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: false })
+
 // Guard: redirect to /setup on a fresh install where no users exist yet.
 // Symmetric with setup.vue's guard that redirects the other way.
 const { data: status } = await useAsyncData('setup-status-for-login', () =>
@@ -30,6 +32,22 @@ async function submit() {
   }
   finally {
     loading.value = false
+  }
+}
+
+const isDev = import.meta.dev
+const devLoading = ref(false)
+async function devLogin() {
+  devLoading.value = true
+  try {
+    await $fetch('/api/auth/dev-login', { method: 'POST' })
+    await navigateTo('/')
+  }
+  catch {
+    error.value = 'Dev login failed — no users exist yet'
+  }
+  finally {
+    devLoading.value = false
   }
 }
 </script>
@@ -65,6 +83,16 @@ async function submit() {
           <p v-if="error" class="text-destructive text-sm">{{ error }}</p>
           <Button type="submit" class="w-full" :disabled="loading">
             {{ loading ? 'Signing in…' : 'Sign in' }}
+          </Button>
+          <Button
+            v-if="isDev"
+            type="button"
+            variant="outline"
+            class="w-full"
+            :disabled="devLoading"
+            @click="devLogin"
+          >
+            {{ devLoading ? 'Signing in…' : 'Dev login (first user)' }}
           </Button>
         </form>
       </CardContent>
