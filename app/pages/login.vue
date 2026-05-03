@@ -53,12 +53,44 @@ async function devLogin() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-background">
-    <Card class="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Sign in</CardTitle>
-      </CardHeader>
-      <CardContent>
+  <div class="flex min-h-screen flex-col md:flex-row">
+    <!-- Left panel: brand identity -->
+    <div
+      class="flex flex-col items-center justify-center bg-[oklch(0.25_0.15_240)] px-8 py-10 text-white md:w-1/2 md:min-h-screen md:items-start md:px-16 md:py-0"
+    >
+      <!-- Decorative shape -->
+      <div class="mb-8 hidden md:block">
+        <div class="flex items-end gap-2">
+          <div class="h-12 w-3 rounded-sm bg-white/20" />
+          <div class="h-20 w-3 rounded-sm bg-white/40" />
+          <div class="h-14 w-3 rounded-sm bg-white/30" />
+          <div class="h-8 w-3 rounded-sm bg-white/15" />
+          <div class="h-24 w-3 rounded-sm bg-white/50" />
+          <div class="h-10 w-3 rounded-sm bg-white/20" />
+          <div class="h-16 w-3 rounded-sm bg-white/35" />
+        </div>
+      </div>
+
+      <h1 class="text-3xl font-bold tracking-tight md:text-4xl">
+        parsedmarc
+      </h1>
+      <p class="mt-2 text-sm font-medium tracking-widest text-white/60 uppercase">
+        DMARC reporting &amp; monitoring
+      </p>
+    </div>
+
+    <!-- Right panel: login form -->
+    <div class="flex flex-1 items-center justify-center bg-background px-8 py-12">
+      <div class="w-full max-w-sm space-y-6">
+        <div>
+          <h2 class="text-xl font-semibold tracking-tight">
+            Sign in to your account
+          </h2>
+          <p class="text-muted-foreground mt-1 text-sm">
+            Enter your credentials below to continue.
+          </p>
+        </div>
+
         <form class="space-y-4" @submit.prevent="submit">
           <div class="space-y-1.5">
             <Label for="login-email">Email</Label>
@@ -95,7 +127,7 @@ async function devLogin() {
             {{ devLoading ? 'Signing in…' : 'Dev login (first user)' }}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   </div>
 </template>

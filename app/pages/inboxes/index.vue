@@ -88,12 +88,12 @@ function dotClass(ok: boolean | null): string {
         Failed to load inboxes: {{ error?.message }}
       </CardContent>
     </Card>
-    <Card v-else-if="status === 'success' && !inboxes?.length">
-      <CardContent class="pt-6 text-muted-foreground p-12 text-center text-sm">
-        No inboxes configured yet.
-        <NuxtLink to="/inboxes/new" class="text-foreground underline">Add your first inbox.</NuxtLink>
-      </CardContent>
-    </Card>
+    <div v-else-if="status === 'success' && inboxes?.length === 0" class="py-12 text-center">
+      <p class="text-muted-foreground text-sm">No inboxes configured yet.</p>
+      <Button variant="outline" size="sm" class="mt-4" as-child>
+        <NuxtLink to="/inboxes/new">Add your first inbox</NuxtLink>
+      </Button>
+    </div>
 
     <Table v-else-if="status === 'success' && inboxes?.length">
       <TableHeader>
@@ -169,6 +169,9 @@ function dotClass(ok: boolean | null): string {
         </TableRow>
       </TableBody>
     </Table>
+    <div v-if="status === 'success' && inboxes?.length" class="mt-3 text-center">
+      <NuxtLink to="/inboxes/new" class="text-xs text-muted-foreground hover:text-foreground">+ Add another inbox</NuxtLink>
+    </div>
   </div>
 
   <!-- ClientOnly: EventSource and Teleport are browser-only -->

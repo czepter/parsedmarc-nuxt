@@ -272,6 +272,10 @@ function relativeTime(iso: string | null | undefined): string {
       </CardContent>
     </Card>
 
+    <div v-if="data && data.domains.length <= 3" class="mt-4 text-center">
+      <p class="text-xs text-muted-foreground">Domains appear here automatically as DMARC reports are received.</p>
+    </div>
+
     <p v-if="data && data.domains.length > 0" class="text-xs text-muted-foreground">
       Showing {{ filteredDomains.length }} of {{ data.domains.length }} domains.
       DMARC/SPF/MX cached on a 1-hour TTL; DKIM selectors come from observed report data.
