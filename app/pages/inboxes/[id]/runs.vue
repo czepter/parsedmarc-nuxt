@@ -52,7 +52,7 @@ function duration(start: string, end: string | null | undefined): string {
           <TableCell class="text-sm">{{ duration(run.startedAt, run.finishedAt) }}</TableCell>
           <TableCell>{{ run.messagesSeen }}</TableCell>
           <TableCell>{{ run.reportsParsed }}</TableCell>
-          <TableCell class="text-destructive max-w-xs truncate text-sm">
+          <TableCell :class="[run.errorMessage ? 'text-destructive' : 'text-muted-foreground', 'max-w-xs truncate text-sm']">
             {{ run.errorMessage ?? '—' }}
           </TableCell>
         </TableRow>
