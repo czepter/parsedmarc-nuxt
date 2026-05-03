@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useDebounceFn } from '@vueuse/core'
+
 definePageMeta({ layout: 'default' })
 
 // ── types ─────────────────────────────────────────────────────────────────
