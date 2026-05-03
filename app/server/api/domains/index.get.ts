@@ -79,20 +79,26 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
     messageRows.map(r => [r.domainId, Number(r.total)]),
   )
 
-  // 2b. Message totals per headerFrom — group by the actual From: header
-  //     domain in each record. Used as the message count for headerFrom-only
+  // 2b. Message totals + distinct-report counts per headerFrom — group by the
+  //     actual From: header domain in each record. Used for headerFrom-only
   //     domains (subdomains that send mail under a parent's DMARC policy and
-  //     therefore have no AggregateReport rows of their own).
+  //     therefore have no AggregateReport rows of their own). The reportCount
+  //     answers "how many distinct reports mention this subdomain", since
+  //     receivers never address aggregate reports to the subdomain itself.
   const headerFromRows = await prisma.$queryRaw<
-    Array<{ headerFrom: string; total: number }>
+    Array<{ headerFrom: string; total: number; reportCount: number }>
   >`
     SELECT ar.headerFrom AS headerFrom,
-      CAST(SUM(ar.count) AS INTEGER) AS total
+      CAST(SUM(ar.count) AS INTEGER) AS total,
+      CAST(COUNT(DISTINCT ar.reportId) AS INTEGER) AS reportCount
     FROM AggregateRecord ar
     GROUP BY ar.headerFrom
   `
   const headerFromMessageMap = new Map<string, number>(
     headerFromRows.map(r => [r.headerFrom, Number(r.total)]),
+  )
+  const headerFromReportMap = new Map<string, number>(
+    headerFromRows.map(r => [r.headerFrom, Number(r.reportCount)]),
   )
 
   // headerFrom-only domains: subdomains (or any From: domain) seen in records
@@ -283,7 +289,11 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
     ...headerFromOnlyNames.map(name => buildRow({
       name,
       domainId: null,
-      reportCount: 0,
+      // For headerFrom-only domains, "reports" means distinct AggregateReports
+      // that contain at least one record with this header_from — receivers
+      // never send a report addressed to a subdomain, so this is the most
+      // useful interpretation of the count.
+      reportCount: headerFromReportMap.get(name) ?? 0,
       forensicCount: 0,
       headerFromOnly: true,
     })),
