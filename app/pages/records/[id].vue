@@ -63,16 +63,6 @@ const id = route.params.id as string
 const { data, status, error } = await useFetch<RecordDetailResponse>(`/api/records/${id}`)
 
 // ── helpers ────────────────────────────────────────────────────────────────
-const DISPOSITION_COLORS: Record<string, string> = {
-  none: 'text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
-  quarantine: 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800',
-  reject: 'text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800',
-}
-
-function dispositionClass(d: string): string {
-  return DISPOSITION_COLORS[d] ?? 'text-muted-foreground bg-muted border-border'
-}
-
 function alignClass(v: string | null): string {
   if (v === 'pass') return 'text-green-600 dark:text-green-400'
   if (v === 'fail') return 'text-red-600 dark:text-red-400'
@@ -167,13 +157,6 @@ function policyAlignLabel(alignment: string | null): string {
 <template>
   <div class="mx-auto max-w-5xl space-y-8 p-6">
 
-    <!-- Back nav -->
-    <div class="flex items-center gap-4">
-      <Button variant="ghost" size="sm" as-child>
-        <NuxtLink to="/records">← Records</NuxtLink>
-      </Button>
-    </div>
-
     <!-- Error -->
     <div
       v-if="status === 'error'"
@@ -195,26 +178,11 @@ function policyAlignLabel(alignment: string | null): string {
     <template v-else-if="status === 'success' && data">
 
       <!-- Header -->
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 class="text-xl font-semibold font-mono">{{ data.sourceIp }}</h1>
-          <p class="text-muted-foreground mt-1 text-sm">
-            Aggregate record
-            <span class="mx-1">·</span>
-            <span class="font-mono text-xs">{{ data.id }}</span>
-          </p>
-        </div>
-
-        <!-- Disposition badge -->
-        <span
-          :class="[
-            'inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium',
-            dispositionClass(data.disposition),
-          ]"
-        >
-          {{ data.disposition }}
-        </span>
-      </div>
+      <PageHeader :title="data.sourceIp" subtitle="Aggregate record">
+        <template #right>
+          <DispositionBadge :kind="(data.disposition as 'none' | 'quarantine' | 'reject')" />
+        </template>
+      </PageHeader>
 
       <!-- Stat tiles -->
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -470,17 +438,21 @@ function policyAlignLabel(alignment: string | null): string {
       </div>
 
       <!-- Raw XML download -->
-      <div class="flex items-center justify-between rounded-md border px-4 py-3">
-        <div>
-          <p class="text-sm font-medium">Raw XML Report</p>
-          <p class="text-muted-foreground text-xs mt-0.5">
-            Original DMARC aggregate report from {{ data.report.orgName }}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" @click="downloadXml">
-          Download XML
-        </Button>
-      </div>
+      <Card>
+        <CardContent class="pt-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium">Raw XML Report</p>
+              <p class="text-muted-foreground text-xs mt-0.5">
+                Original DMARC aggregate report from {{ data.report.orgName }}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" @click="downloadXml">
+              Download XML
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <!-- Sibling records -->
       <div v-if="data.siblings.length > 0" class="space-y-2">
@@ -515,14 +487,7 @@ function policyAlignLabel(alignment: string | null): string {
                     {{ sib.count.toLocaleString('en-US') }}
                   </TableCell>
                   <TableCell>
-                    <span
-                      :class="[
-                        'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
-                        dispositionClass(sib.disposition),
-                      ]"
-                    >
-                      {{ sib.disposition }}
-                    </span>
+                    <DispositionBadge :kind="(sib.disposition as 'none' | 'quarantine' | 'reject')" size="sm" />
                   </TableCell>
                   <TableCell class="font-mono text-xs">{{ sib.headerFrom }}</TableCell>
                   <TableCell>

@@ -29,7 +29,7 @@ interface SearchResponse {
 
 const router = useRouter()
 const dialogRef = ref<HTMLDialogElement | null>(null)
-const inputRef = ref<HTMLInputElement | null>(null)
+const inputRef = ref<{ $el?: HTMLInputElement } | null>(null)
 const rawQuery = ref('')
 const debouncedQuery = ref('')
 const results = ref<SearchResponse | null>(null)
@@ -90,7 +90,7 @@ function openSearch() {
   results.value = null
   focusedIndex.value = -1
   dialogRef.value?.showModal()
-  nextTick(() => inputRef.value?.focus())
+  nextTick(() => inputRef.value?.$el?.focus())
 }
 
 function closeSearch() {
@@ -135,43 +135,44 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
 
 <template>
   <!-- Trigger button in nav -->
-  <button
-    type="button"
-    class="text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors"
+  <Button
+    variant="outline"
+    class="text-muted-foreground h-auto gap-1.5 px-2.5 py-1 text-xs"
     aria-label="Open search"
     @click="openSearch"
   >
     <span>Search</span>
     <kbd class="bg-muted rounded px-1 font-mono text-[10px]">/</kbd>
-  </button>
+  </Button>
 
   <!-- Native dialog modal -->
   <dialog
     ref="dialogRef"
-    class="bg-background text-foreground m-auto w-full max-w-lg rounded-xl border p-0 shadow-xl backdrop:bg-black/50"
+    class="bg-background text-foreground m-auto w-full max-w-lg rounded-lg border p-0 shadow-xl backdrop:bg-black/50"
     @keydown="onKeydown"
   >
     <div class="flex flex-col">
       <!-- Input -->
       <div class="flex items-center gap-2 border-b px-4 py-3">
         <span class="text-muted-foreground text-sm">Search</span>
-        <input
+        <Input
           ref="inputRef"
           v-model="rawQuery"
           type="text"
           placeholder="Domains, IPs, forensic subjects…"
-          class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          class="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent text-sm placeholder:text-muted-foreground"
           autocomplete="off"
           spellcheck="false"
         />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
+          class="text-muted-foreground h-auto px-1.5 py-0.5 text-xs"
           aria-label="Close search"
-          class="text-muted-foreground hover:text-foreground text-xs"
           @click="closeSearch"
         >
           Esc
-        </button>
+        </Button>
       </div>
 
       <!-- Results body -->
@@ -204,22 +205,20 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
             <p class="text-muted-foreground mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider">
               Domains
             </p>
-            <button
+            <Button
               v-for="(item, i) in results.domains"
               :key="item.name"
-              type="button"
+              variant="ghost"
               :class="[
-                'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors',
-                focusedIndex === flatIdx('domain', i)
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent hover:text-accent-foreground',
+                'w-full justify-between text-left px-3 py-2 h-auto text-sm font-normal',
+                focusedIndex === flatIdx('domain', i) ? 'bg-accent text-accent-foreground' : '',
               ]"
               @click="navigate(item.href)"
               @mouseenter="focusedIndex = flatIdx('domain', i)"
             >
               <span class="font-mono">{{ item.name }}</span>
               <span class="text-muted-foreground text-xs">Domain</span>
-            </button>
+            </Button>
           </div>
 
           <!-- IPs group -->
@@ -227,22 +226,20 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
             <p class="text-muted-foreground mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider">
               IP Addresses
             </p>
-            <button
+            <Button
               v-for="(item, i) in results.ips"
               :key="item.ip"
-              type="button"
+              variant="ghost"
               :class="[
-                'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors',
-                focusedIndex === flatIdx('ip', i)
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent hover:text-accent-foreground',
+                'w-full justify-between text-left px-3 py-2 h-auto text-sm font-normal',
+                focusedIndex === flatIdx('ip', i) ? 'bg-accent text-accent-foreground' : '',
               ]"
               @click="navigate(item.href)"
               @mouseenter="focusedIndex = flatIdx('ip', i)"
             >
               <span class="font-mono">{{ item.ip }}</span>
               <span class="text-muted-foreground text-xs">{{ item.country ?? 'IP' }}</span>
-            </button>
+            </Button>
           </div>
 
           <!-- Forensics group -->
@@ -250,15 +247,13 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
             <p class="text-muted-foreground mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider">
               Forensic Reports
             </p>
-            <button
+            <Button
               v-for="(item, i) in results.forensics"
               :key="item.id"
-              type="button"
+              variant="ghost"
               :class="[
-                'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors',
-                focusedIndex === flatIdx('forensic', i)
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent hover:text-accent-foreground',
+                'w-full justify-between text-left px-3 py-2 h-auto text-sm font-normal',
+                focusedIndex === flatIdx('forensic', i) ? 'bg-accent text-accent-foreground' : '',
               ]"
               @click="navigate(item.href)"
               @mouseenter="focusedIndex = flatIdx('forensic', i)"
@@ -267,7 +262,7 @@ function flatIdx(group: 'domain' | 'ip' | 'forensic', localIdx: number): number 
               <span class="text-muted-foreground ml-2 shrink-0 text-xs">
                 {{ new Date(item.arrivalDate).toLocaleDateString() }}
               </span>
-            </button>
+            </Button>
           </div>
         </template>
       </div>

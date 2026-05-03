@@ -139,41 +139,38 @@ function fmtPercent(n: number): string {
   <div class="mx-auto max-w-7xl space-y-8 p-6">
 
     <!-- Header row -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-2xl font-semibold">Dashboard</h1>
+    <PageHeader title="Dashboard">
+      <template #right>
+        <div class="flex items-center">
+          <ToggleGroup
+            type="single"
+            :model-value="isMoreActive ? '' : selectedWindow"
+            variant="outline"
+            class="rounded-r-none"
+            @update:model-value="v => v && setWindow(v as WindowKey)"
+          >
+            <ToggleGroupItem
+              v-for="w in QUICK_WINDOWS"
+              :key="w"
+              :value="w"
+              class="px-3 py-1 text-sm"
+            >{{ w }}</ToggleGroupItem>
+          </ToggleGroup>
 
-      <div class="flex items-center">
-        <ToggleGroup
-          type="single"
-          :model-value="isMoreActive ? '' : selectedWindow"
-          variant="outline"
-          class="rounded-r-none"
-          @update:model-value="v => v && setWindow(v as WindowKey)"
-        >
-          <ToggleGroupItem
-            v-for="w in QUICK_WINDOWS"
-            :key="w"
-            :value="w"
-            class="px-3 py-1 text-sm"
-          >{{ w }}</ToggleGroupItem>
-        </ToggleGroup>
-
-        <!-- More button — active state matches selected ToggleGroupItem style -->
-        <button
-          :class="[
-            'flex items-center gap-1.5 border border-l-0 px-3 py-1 text-sm rounded-r-md h-9 transition-colors',
-            isMoreActive
-              ? 'bg-foreground text-background border-foreground'
-              : 'bg-background hover:bg-accent border-input',
-          ]"
-          @click="moreDialogOpen = true"
-        >
-          <Check v-if="isMoreActive" class="size-3 shrink-0" />
-          {{ isMoreActive ? moreLabel : 'More' }}
-          <ChevronDown v-if="!isMoreActive" class="size-3 shrink-0" />
-        </button>
-      </div>
-    </div>
+          <!-- More button — active state matches selected ToggleGroupItem style -->
+          <Button
+            variant="outline"
+            :class="[
+              'border-l-0 rounded-l-none h-9 px-3 py-1 text-sm gap-1.5',
+              isMoreActive ? 'bg-foreground text-background border-foreground hover:bg-foreground/90' : '',
+            ]"
+            @click="moreDialogOpen = true"
+          >
+            More <ChevronDown class="size-3" />
+          </Button>
+        </div>
+      </template>
+    </PageHeader>
 
     <DateRangeDialog
       :open="moreDialogOpen"

@@ -44,12 +44,6 @@ function passRateClass(rate: number): string {
 
 <template>
   <div class="mx-auto max-w-5xl space-y-8 p-6">
-    <!-- Back nav -->
-    <div class="flex items-center gap-4">
-      <Button variant="ghost" size="sm" as-child>
-        <NuxtLink to="/">← Dashboard</NuxtLink>
-      </Button>
-    </div>
 
     <!-- Error state -->
     <div
@@ -73,10 +67,7 @@ function passRateClass(rate: number): string {
     <!-- Success state -->
     <template v-else-if="status === 'success' && data">
       <!-- Header -->
-      <div>
-        <h1 class="text-2xl font-semibold font-mono">{{ data.name }}</h1>
-        <p class="text-muted-foreground mt-1 text-sm">Domain detail</p>
-      </div>
+      <PageHeader :title="data.name" subtitle="Domain detail" />
 
       <!-- Summary tiles -->
       <div class="grid grid-cols-3 gap-4">
@@ -115,83 +106,87 @@ function passRateClass(rate: number): string {
       <!-- Top IPs table -->
       <div class="space-y-2">
         <h2 class="text-base font-semibold">Top Source IPs</h2>
-        <div class="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Source IP</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead class="text-right">Messages</TableHead>
-                <TableHead class="text-right">Pass Rate</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="ip in data.topIps"
-                :key="ip.sourceIp"
-              >
-                <TableCell>
-                  <Button variant="link" size="sm" class="h-auto p-0 font-mono text-xs" as-child>
-                    <NuxtLink :to="`/ips/${encodeURIComponent(ip.sourceIp)}`">{{ ip.sourceIp }}</NuxtLink>
-                  </Button>
-                </TableCell>
-                <TableCell class="text-sm">{{ ip.country ?? '—' }}</TableCell>
-                <TableCell class="text-right text-sm">{{ ip.totalCount.toLocaleString() }}</TableCell>
-                <TableCell class="text-right">
-                  <span :class="['text-sm font-medium', passRateClass(ip.passRate)]">
-                    {{ ip.passRate.toFixed(1) }}%
-                  </span>
-                </TableCell>
-              </TableRow>
-              <TableRow v-if="data.topIps.length === 0">
-                <TableCell colspan="4" class="text-muted-foreground py-8 text-center text-sm">
-                  No source IPs found.
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <Card>
+          <CardContent class="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Source IP</TableHead>
+                  <TableHead>Country</TableHead>
+                  <TableHead class="text-right">Messages</TableHead>
+                  <TableHead class="text-right">Pass Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
+                  v-for="ip in data.topIps"
+                  :key="ip.sourceIp"
+                >
+                  <TableCell>
+                    <Button variant="link" size="sm" class="h-auto p-0 font-mono text-xs" as-child>
+                      <NuxtLink :to="`/ips/${encodeURIComponent(ip.sourceIp)}`">{{ ip.sourceIp }}</NuxtLink>
+                    </Button>
+                  </TableCell>
+                  <TableCell class="text-sm">{{ ip.country ?? '—' }}</TableCell>
+                  <TableCell class="text-right text-sm">{{ ip.totalCount.toLocaleString() }}</TableCell>
+                  <TableCell class="text-right">
+                    <span :class="['text-sm font-medium', passRateClass(ip.passRate)]">
+                      {{ ip.passRate.toFixed(1) }}%
+                    </span>
+                  </TableCell>
+                </TableRow>
+                <TableRow v-if="data.topIps.length === 0">
+                  <TableCell colspan="4" class="text-muted-foreground py-8 text-center text-sm">
+                    No source IPs found.
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
 
       <!-- Recent aggregate reports -->
       <div class="space-y-2">
         <h2 class="text-base font-semibold">Recent Aggregate Reports</h2>
-        <div class="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Report ID</TableHead>
-                <TableHead>Sender Org</TableHead>
-                <TableHead>Period Start</TableHead>
-                <TableHead>Period End</TableHead>
-                <TableHead class="text-right">Records</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="report in data.recentReports"
-                :key="report.id"
-              >
-                <TableCell class="font-mono text-xs max-w-xs truncate">
-                  {{ report.reportId }}
-                </TableCell>
-                <TableCell class="text-sm">{{ report.orgName }}</TableCell>
-                <TableCell class="text-sm">
-                  {{ new Date(report.dateBegin).toLocaleDateString() }}
-                </TableCell>
-                <TableCell class="text-sm">
-                  {{ new Date(report.dateEnd).toLocaleDateString() }}
-                </TableCell>
-                <TableCell class="text-right text-sm">{{ report.recordCount }}</TableCell>
-              </TableRow>
-              <TableRow v-if="data.recentReports.length === 0">
-                <TableCell colspan="5" class="text-muted-foreground py-8 text-center text-sm">
-                  No reports found.
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
+        <Card>
+          <CardContent class="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Report ID</TableHead>
+                  <TableHead>Sender Org</TableHead>
+                  <TableHead>Period Start</TableHead>
+                  <TableHead>Period End</TableHead>
+                  <TableHead class="text-right">Records</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
+                  v-for="report in data.recentReports"
+                  :key="report.id"
+                >
+                  <TableCell class="font-mono text-xs max-w-xs truncate">
+                    {{ report.reportId }}
+                  </TableCell>
+                  <TableCell class="text-sm">{{ report.orgName }}</TableCell>
+                  <TableCell class="text-sm">
+                    {{ new Date(report.dateBegin).toLocaleDateString() }}
+                  </TableCell>
+                  <TableCell class="text-sm">
+                    {{ new Date(report.dateEnd).toLocaleDateString() }}
+                  </TableCell>
+                  <TableCell class="text-right text-sm">{{ report.recordCount }}</TableCell>
+                </TableRow>
+                <TableRow v-if="data.recentReports.length === 0">
+                  <TableCell colspan="5" class="text-muted-foreground py-8 text-center text-sm">
+                    No reports found.
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
     </template>
   </div>

@@ -75,20 +75,25 @@ function dotClass(ok: boolean | null): string {
 
 <template>
   <div class="mx-auto max-w-6xl space-y-6 p-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Inboxes</h1>
-      <Button variant="outline" size="sm" as-child>
-        <NuxtLink to="/inboxes/new">+ Add Inbox</NuxtLink>
-      </Button>
-    </div>
+    <PageHeader title="Inboxes">
+      <template #right>
+        <Button variant="outline" size="sm" as-child>
+          <NuxtLink to="/inboxes/new">+ Add Inbox</NuxtLink>
+        </Button>
+      </template>
+    </PageHeader>
 
-    <div v-if="status === 'error'" class="text-destructive rounded-md border p-12 text-center text-sm">
-      Failed to load inboxes: {{ error?.message }}
-    </div>
-    <div v-else-if="status === 'success' && !inboxes?.length" class="text-muted-foreground rounded-md border p-12 text-center text-sm">
-      No inboxes configured yet.
-      <NuxtLink to="/inboxes/new" class="text-foreground underline">Add your first inbox.</NuxtLink>
-    </div>
+    <Card v-if="status === 'error'">
+      <CardContent class="pt-6 text-destructive p-12 text-center text-sm">
+        Failed to load inboxes: {{ error?.message }}
+      </CardContent>
+    </Card>
+    <Card v-else-if="status === 'success' && !inboxes?.length">
+      <CardContent class="pt-6 text-muted-foreground p-12 text-center text-sm">
+        No inboxes configured yet.
+        <NuxtLink to="/inboxes/new" class="text-foreground underline">Add your first inbox.</NuxtLink>
+      </CardContent>
+    </Card>
 
     <Table v-else-if="status === 'success' && inboxes?.length">
       <TableHeader>

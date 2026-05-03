@@ -75,12 +75,7 @@ async function submit() {
 
 <template>
   <div class="mx-auto max-w-lg space-y-6 p-6">
-    <div class="flex items-center gap-4">
-      <Button variant="ghost" size="sm" as-child>
-        <NuxtLink to="/inboxes">← Back</NuxtLink>
-      </Button>
-      <h1 class="text-2xl font-semibold">Add Inbox</h1>
-    </div>
+    <PageHeader title="Add Inbox" />
 
     <Card>
       <CardContent class="pt-6">

@@ -106,19 +106,18 @@ function relativeTime(iso: string | null | undefined): string {
 <template>
   <div class="mx-auto max-w-7xl space-y-6 p-6">
     <!-- Header -->
-    <div class="flex items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold">Domains</h1>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Reported-for domains with cached email-authentication DNS records and drift detection.
-        </p>
-      </div>
-      <Input
-        v-model="search"
-        placeholder="Search domains…"
-        class="h-9 w-64 text-sm"
-      />
-    </div>
+    <PageHeader
+      title="Domains"
+      subtitle="Reported-for domains with cached email-authentication DNS records and drift detection."
+    >
+      <template #right>
+        <Input
+          v-model="search"
+          placeholder="Search domains…"
+          class="h-9 w-64 text-sm"
+        />
+      </template>
+    </PageHeader>
 
     <!-- Error -->
     <div

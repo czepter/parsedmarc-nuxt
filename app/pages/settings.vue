@@ -110,10 +110,7 @@ function downloadBackup() {
 
 <template>
   <div class="mx-auto max-w-2xl space-y-8 p-6">
-    <div>
-      <h1 class="text-2xl font-semibold">Settings</h1>
-      <p class="text-muted-foreground mt-1 text-sm">Account and maintenance options</p>
-    </div>
+    <PageHeader title="Settings" subtitle="Account and maintenance options" />
 
     <!-- Status loading / error -->
     <div v-if="status === 'pending'" class="space-y-4">

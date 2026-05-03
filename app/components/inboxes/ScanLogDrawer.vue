@@ -183,15 +183,17 @@ const LEVEL_ICON_COLOR: Record<LogLevel, string> = {
             </div>
           </div>
 
-          <button
-            class="text-muted-foreground hover:text-foreground rounded-md p-1.5 transition-colors hover:bg-muted"
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 text-muted-foreground"
             aria-label="Close"
             @click="stopAndClose"
           >
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
 
         <!-- Status banner -->

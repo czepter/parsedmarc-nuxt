@@ -225,12 +225,6 @@ const showingTo = computed(() => {
 
 const SORT_ICON: Record<string, string> = { asc: '↑', desc: '↓' }
 
-const DISPOSITION_BADGE_CLASS: Record<string, string> = {
-  none: 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
-  quarantine: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  reject: 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
-}
-
 // ── DMARC status classification ────────────────────────────────────────────
 // Pass          — DMARC alignment passed (SPF or DKIM)
 // Misconfigured — auth passed but alignment failed (relay, wrong domain, forwarding)
@@ -241,18 +235,6 @@ function dmarcStatus(r: RecordRow): DmarcStatus {
   if (r.dmarcCompliant) return 'pass'
   const anyAuthPassed = r.dkimAuthResult === 'pass' || r.spfAuthResult === 'pass'
   return anyAuthPassed ? 'misconfigured' : 'spoofed'
-}
-
-const STATUS_LABEL: Record<DmarcStatus, string> = {
-  pass: 'Pass',
-  misconfigured: 'Misconfigured',
-  spoofed: 'Spoofed',
-}
-
-const STATUS_BADGE_CLASS: Record<DmarcStatus, string> = {
-  pass: 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800',
-  misconfigured: 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  spoofed: 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800',
 }
 
 const STATUS_TOOLTIP: Record<DmarcStatus, string> = {
@@ -271,7 +253,7 @@ function resultClass(result: string | null): string {
   <div class="mx-auto max-w-7xl space-y-6 p-6">
 
     <!-- Page heading -->
-    <h1 class="text-2xl font-semibold">Records</h1>
+    <PageHeader title="Records" />
 
     <!-- Filter bar -->
     <div class="flex flex-wrap items-center gap-3">
@@ -417,12 +399,7 @@ function resultClass(result: string | null): string {
                 {{ Intl.NumberFormat('en-US').format(record.count) }}
               </TableCell>
               <TableCell>
-                <Badge
-                  variant="outline"
-                  :class="DISPOSITION_BADGE_CLASS[record.disposition] ?? 'text-muted-foreground'"
-                >
-                  {{ record.disposition }}
-                </Badge>
+                <DispositionBadge :kind="(record.disposition as 'none' | 'quarantine' | 'reject')" size="sm" />
               </TableCell>
               <TableCell>
                 <Button variant="link" size="sm" class="h-auto p-0 font-mono text-xs" as-child>
@@ -431,13 +408,10 @@ function resultClass(result: string | null): string {
               </TableCell>
               <!-- DMARC status: Pass / Misconfigured / Spoofed -->
               <TableCell>
-                <Badge
-                  variant="outline"
-                  :class="STATUS_BADGE_CLASS[dmarcStatus(record)]"
+                <StatusBadge
+                  :kind="dmarcStatus(record)"
                   :title="STATUS_TOOLTIP[dmarcStatus(record)]"
-                >
-                  {{ STATUS_LABEL[dmarcStatus(record)] }}
-                </Badge>
+                />
               </TableCell>
               <!-- DKIM alignment verdict -->
               <TableCell>
