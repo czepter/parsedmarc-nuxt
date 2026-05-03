@@ -33,6 +33,15 @@ interface DomainRow {
     lookedUpAt: string | null
   } | null
   drift: DriftKind
+  inheritedDmarc: {
+    from: string
+    policy: string | null
+    pct: number | null
+  } | null
+  inheritedSpf: {
+    from: string
+    qualifierAll: string | null
+  } | null
 }
 
 interface DomainsListResponse {
@@ -163,12 +172,27 @@ function relativeTime(iso: string | null | undefined): string {
               <TableCell class="text-right text-sm">{{ d.reportCount.toLocaleString('en-US') }}</TableCell>
               <TableCell class="text-right text-sm">{{ d.messageCount.toLocaleString('en-US') }}</TableCell>
               <TableCell>
-                <span
-                  v-if="d.dmarc?.hasRecord"
-                  :class="['inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', dmarcPolicyClass(d.dmarc.policy)]"
-                >
-                  p={{ d.dmarc.policy ?? '—' }}
-                </span>
+                <!-- Domain has its own DMARC record -->
+                <div v-if="d.dmarc?.hasRecord">
+                  <span
+                    :class="['inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', dmarcPolicyClass(d.dmarc.policy)]"
+                  >
+                    p={{ d.dmarc.policy ?? '—' }}
+                  </span>
+                </div>
+                <!-- No own record but a parent does (RFC 7489 organisational fallback) -->
+                <div v-else-if="d.inheritedDmarc">
+                  <span
+                    :class="['inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium italic opacity-80', dmarcPolicyClass(d.inheritedDmarc.policy)]"
+                    :title="`Inherited from ${d.inheritedDmarc.from} (DMARC organisational-domain fallback per RFC 7489)`"
+                  >
+                    ↪ p={{ d.inheritedDmarc.policy ?? '—' }}
+                  </span>
+                  <div class="text-muted-foreground mt-0.5 text-[10px] leading-tight">
+                    from {{ d.inheritedDmarc.from }}
+                  </div>
+                </div>
+                <!-- Looked up, no record found -->
                 <span
                   v-else-if="d.dmarc"
                   class="inline-flex items-center rounded-full border bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 px-2 py-0.5 text-xs font-medium"
@@ -178,12 +202,26 @@ function relativeTime(iso: string | null | undefined): string {
                 <span v-else class="text-muted-foreground text-xs">—</span>
               </TableCell>
               <TableCell>
-                <span
-                  v-if="d.spf?.hasRecord"
-                  :class="['font-mono text-xs', spfQualifierClass(d.spf.qualifierAll)]"
-                >
-                  {{ d.spf.qualifierAll ?? '✓' }}
-                </span>
+                <!-- Domain has its own SPF record -->
+                <div v-if="d.spf?.hasRecord">
+                  <span
+                    :class="['font-mono text-xs', spfQualifierClass(d.spf.qualifierAll)]"
+                  >
+                    {{ d.spf.qualifierAll ?? '✓' }}
+                  </span>
+                </div>
+                <!-- Reference SPF from parent (informational — SPF doesn't actually inherit) -->
+                <div v-else-if="d.inheritedSpf">
+                  <span
+                    :class="['font-mono text-xs italic opacity-70', spfQualifierClass(d.inheritedSpf.qualifierAll)]"
+                    :title="`Reference only: ${d.inheritedSpf.from} publishes SPF, but SPF does not inherit — receivers look up SPF at the exact domain in Mail-From.`"
+                  >
+                    ↪ {{ d.inheritedSpf.qualifierAll ?? '✓' }}
+                  </span>
+                  <div class="text-muted-foreground mt-0.5 text-[10px] leading-tight">
+                    {{ d.inheritedSpf.from }}
+                  </div>
+                </div>
                 <span
                   v-else-if="d.spf"
                   class="text-red-700 dark:text-red-400 text-xs"

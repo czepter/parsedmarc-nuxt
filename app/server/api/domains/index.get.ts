@@ -2,9 +2,22 @@ import prisma from '~~/lib/prisma'
 import { detectDrift, type DriftKind } from '../../utils/drift'
 import {
   findInheritedDmarc,
+  getDmarcInheritanceCandidates,
   isDmarcMissing,
   type InheritedDmarc,
 } from '../../utils/dns-lookup'
+
+/**
+ * SPF "inherited" from an organisational ancestor. Note that unlike DMARC,
+ * SPF has NO protocol-level fallback — receivers look up SPF at exactly the
+ * domain in the Mail-From, and stop. This field is informational only: it
+ * shows the parent's SPF as a reference, NOT as actual coverage. The UI
+ * labels it accordingly so analysts don't misread it.
+ */
+export interface InheritedSpf {
+  from: string
+  qualifierAll: string | null
+}
 
 interface DomainRow {
   name: string
@@ -37,6 +50,12 @@ interface DomainRow {
    * with their own valid DMARC record or with no ancestor record found.
    */
   inheritedDmarc: InheritedDmarc | null
+  /**
+   * Reference SPF record from an ancestor when this domain has none. SPF
+   * does NOT inherit in DNS — this is informational only (e.g. to show
+   * "the parent has -all but this subdomain has no SPF of its own").
+   */
+  inheritedSpf: InheritedSpf | null
 }
 
 interface DomainsListResponse {
@@ -207,6 +226,21 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
       ? await findInheritedDmarc(source.name, cacheOnlyRefresh)
       : null
 
+    // SPF "inheritance" is informational (no protocol fallback) — walk the
+    // same candidate chain and pick the first cached parent SPF. We only
+    // surface this when the domain has no SPF of its own, so an analyst
+    // looking at a subdomain row can see the parent's posture for context.
+    let inheritedSpf: InheritedSpf | null = null
+    if (shouldInherit && (!spf || spf.record === null)) {
+      for (const candidate of getDmarcInheritanceCandidates(source.name)) {
+        const parentSpf = spfMap.get(candidate)
+        if (parentSpf && !parentSpf.error && parentSpf.record) {
+          inheritedSpf = { from: candidate, qualifierAll: parentSpf.qualifierAll }
+          break
+        }
+      }
+    }
+
     const dispositionCounts = source.domainId
       ? (dispositionMap.get(source.domainId) ?? {})
       : (headerFromDispositionMap.get(source.name) ?? {})
@@ -275,6 +309,7 @@ export default defineEventHandler(async (): Promise<DomainsListResponse> => {
         : null,
       drift: drift.kind,
       inheritedDmarc,
+      inheritedSpf,
     }
   }
 
