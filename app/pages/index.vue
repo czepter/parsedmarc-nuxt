@@ -143,33 +143,31 @@ function fmtPercent(n: number): string {
     <!-- Header row -->
     <PageHeader title="Dashboard">
       <template #right>
-        <div class="flex items-center">
+        <div class="flex items-center rounded-md border overflow-hidden">
           <ToggleGroup
             type="single"
             :model-value="isMoreActive ? '' : selectedWindow"
-            variant="outline"
-            class="rounded-r-none"
+            class="rounded-none gap-0"
             @update:model-value="v => v && setWindow(v as WindowKey)"
           >
             <ToggleGroupItem
               v-for="w in QUICK_WINDOWS"
               :key="w"
               :value="w"
-              class="px-3 py-1 text-sm"
+              class="h-8 rounded-none border-r px-3 text-sm data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
             >{{ w }}</ToggleGroupItem>
           </ToggleGroup>
-
-          <!-- More button — active state matches selected ToggleGroupItem style -->
           <Button
-            variant="outline"
+            variant="ghost"
+            size="sm"
             :class="[
-              'border-l-0 rounded-l-none h-9 px-3 py-1 text-sm gap-1.5',
-              isMoreActive ? 'bg-foreground text-background border-foreground hover:bg-foreground/90' : '',
+              'h-8 rounded-none px-3 text-sm gap-1',
+              isMoreActive
+                ? 'bg-primary/10 text-primary font-medium hover:bg-primary/10 hover:text-primary'
+                : 'text-muted-foreground hover:text-foreground',
             ]"
             @click="moreDialogOpen = true"
-          >
-            More <ChevronDown class="size-3" />
-          </Button>
+          >{{ isMoreActive ? moreLabel : 'More' }} <ChevronDown class="size-3" /></Button>
         </div>
       </template>
     </PageHeader>
