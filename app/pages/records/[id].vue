@@ -62,6 +62,12 @@ const id = route.params.id as string
 
 const { data, status, error } = await useFetch<RecordDetailResponse>(`/api/records/${id}`)
 
+useHead({
+  title: computed(() =>
+    data.value ? `${data.value.sourceIp} — parsedmarc` : 'Record — parsedmarc'
+  ),
+})
+
 // ── helpers ────────────────────────────────────────────────────────────────
 function alignClass(v: string | null): string {
   if (v === 'pass') return 'text-green-600 dark:text-green-400'

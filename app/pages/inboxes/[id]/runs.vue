@@ -1,4 +1,6 @@
 <script setup lang="ts">
+useHead({ title: 'Scan Runs — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 const route = useRoute()
 const id = route.params.id as string

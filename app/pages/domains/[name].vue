@@ -35,6 +35,12 @@ const { data, status, error } = await useFetch<DomainDetailResponse>(
   `/api/domains/${encodeURIComponent(domainName)}`,
 )
 
+useHead({
+  title: computed(() =>
+    data.value ? `${data.value.name} — parsedmarc` : 'Domain — parsedmarc'
+  ),
+})
+
 function passRateClass(rate: number): string {
   if (rate >= 90) return 'text-green-700 dark:text-green-400'
   if (rate >= 50) return 'text-amber-600 dark:text-amber-400'

@@ -9,6 +9,8 @@ import AlertDialogDescription from '~/components/ui/alert-dialog/AlertDialogDesc
 import AlertDialogAction from '~/components/ui/alert-dialog/AlertDialogAction.vue'
 import AlertDialogCancel from '~/components/ui/alert-dialog/AlertDialogCancel.vue'
 
+useHead({ title: 'Settings — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 
 interface GeoipStatus {

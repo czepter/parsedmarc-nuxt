@@ -1,4 +1,6 @@
 <script setup lang="ts">
+useHead({ title: 'Setup — parsedmarc' })
+
 definePageMeta({ layout: false })
 
 // Guard: if a user already exists, this deployment is already set up.

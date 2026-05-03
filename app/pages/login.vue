@@ -1,4 +1,6 @@
 <script setup lang="ts">
+useHead({ title: 'Sign in — parsedmarc' })
+
 definePageMeta({ layout: false })
 
 // Guard: redirect to /setup on a fresh install where no users exist yet.

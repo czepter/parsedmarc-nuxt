@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useDebounceFn } from '@vueuse/core'
 
+useHead({ title: 'Records — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 
 // ── types ─────────────────────────────────────────────────────────────────

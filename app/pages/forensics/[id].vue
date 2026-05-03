@@ -16,6 +16,8 @@ const id = route.params.id as string
 const { data, status, error } = await useFetch<ForensicDetailResponse>(
   `/api/forensics/${id}`,
 )
+
+useHead({ title: 'Forensic Report — parsedmarc' })
 </script>
 
 <template>

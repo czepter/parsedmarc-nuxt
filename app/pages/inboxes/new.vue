@@ -1,4 +1,6 @@
 <script setup lang="ts">
+useHead({ title: 'Add Inbox — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 const form = reactive({
   label: '',

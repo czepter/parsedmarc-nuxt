@@ -49,6 +49,12 @@ const ip = route.params.ip as string
 
 const { data, status, error } = await useFetch<IpDetailResponse>(`/api/ips/${encodeURIComponent(ip)}`)
 
+useHead({
+  title: computed(() =>
+    data.value ? `${data.value.ip} — parsedmarc` : 'IP — parsedmarc'
+  ),
+})
+
 function resultClass(result: string | null): string {
   return result === 'pass' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
 }

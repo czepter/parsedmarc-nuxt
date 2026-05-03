@@ -1,4 +1,6 @@
 <script setup lang="ts">
+useHead({ title: 'Domains — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 
 type DriftKind =

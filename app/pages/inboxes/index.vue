@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { MoreHorizontal } from 'lucide-vue-next'
 
+useHead({ title: 'Inboxes — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 const { data: inboxes, refresh, status, error } = await useFetch('/api/inboxes')
 

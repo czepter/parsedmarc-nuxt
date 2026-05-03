@@ -2,6 +2,8 @@
 import { ChevronDown, Check } from 'lucide-vue-next'
 import type { WindowKey } from '~/types/preferences'
 
+useHead({ title: 'Dashboard — parsedmarc' })
+
 definePageMeta({ layout: 'default' })
 // ── types ─────────────────────────────────────────────────────────────────
 interface TileData {
