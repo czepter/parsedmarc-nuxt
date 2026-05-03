@@ -113,4 +113,65 @@ describe('parseAggregate', () => {
     const report = parseAggregate(att)
     expect(report.orgName).toBe('Google Inc.')
   })
+
+  it('extracts auth_results fields from Google fixture', () => {
+    const att = xmlAttachment('google.xml')
+    const report = parseAggregate(att)
+    expect(report.policyP).toBe('reject')
+    expect(report.policySp).toBe('reject')
+    expect(report.policyAdkim).toBe('r')
+    expect(report.policyAspf).toBe('r')
+    expect(report.policyPct).toBe(100)
+    expect(report.records[0]).toMatchObject({
+      spfAuthDomain: 'example.com',
+      spfAuthResult: 'pass',
+      dkimAuthDomain: 'example.com',
+      dkimAuthSelector: 'google',
+      dkimAuthResult: 'pass',
+    })
+  })
+
+  it('extracts auth_results fields from Mail.ru fixture', () => {
+    const att = xmlAttachment('mailru.xml')
+    const report = parseAggregate(att)
+    expect(report.policyP).toBe('none')
+    expect(report.policySp).toBe('none')
+    expect(report.policyPct).toBe(100)
+    expect(report.records[0]).toMatchObject({
+      spfAuthDomain: 'example.com',
+      spfAuthResult: 'fail',
+      dkimAuthDomain: 'example.com',
+      dkimAuthSelector: 'k1',
+      dkimAuthResult: 'fail',
+    })
+  })
+
+  it('returns xmlString (the decompressed XML)', () => {
+    const att = xmlAttachment('google.xml')
+    const report = parseAggregate(att)
+    expect(report.xmlString).toContain('<feedback>')
+    expect(report.xmlString).toContain('Google Inc.')
+  })
+
+  it('selects best DKIM result (first pass wins) from multi-DKIM fixture', () => {
+    const att = xmlAttachment('multi-dkim.xml')
+    const report = parseAggregate(att)
+    // Should pick the passing DKIM (second entry), not the first (failing) one
+    expect(report.records[0].dkimAuthDomain).toBe('example.com')
+    expect(report.records[0].dkimAuthSelector).toBe('main')
+    expect(report.records[0].dkimAuthResult).toBe('pass')
+    // SPF from auth_results
+    expect(report.records[0].spfAuthDomain).toBe('sendgrid.net')
+    expect(report.records[0].spfAuthResult).toBe('pass')
+  })
+
+  it('returns correct policy fields from multi-DKIM fixture', () => {
+    const att = xmlAttachment('multi-dkim.xml')
+    const report = parseAggregate(att)
+    expect(report.policyP).toBe('quarantine')
+    expect(report.policySp).toBe('none')
+    expect(report.policyAdkim).toBe('r')
+    expect(report.policyAspf).toBe('r')
+    expect(report.policyPct).toBe(75)
+  })
 })

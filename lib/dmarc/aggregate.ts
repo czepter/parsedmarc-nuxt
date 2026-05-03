@@ -9,6 +9,12 @@ export interface ParsedAggregateRecord {
   dkim: string
   spf: string
   headerFrom: string
+  // auth_results fields (null when absent from XML)
+  spfAuthDomain: string | null
+  spfAuthResult: string | null
+  dkimAuthDomain: string | null
+  dkimAuthSelector: string | null
+  dkimAuthResult: string | null
 }
 
 export interface ParsedAggregateReport {
@@ -18,14 +24,24 @@ export interface ParsedAggregateReport {
   dateBegin: Date
   dateEnd: Date
   records: ParsedAggregateRecord[]
+  /** Decompressed XML string — used by ingest to store rawXml correctly. */
+  xmlString: string
+  // policy_published fields (null when absent from XML)
+  policyP: string | null
+  policySp: string | null
+  policyAdkim: string | null
+  policyAspf: string | null
+  policyPct: number | null
 }
 
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  // Always produce an array for <record> elements, even when there is only one.
-  // Without this, a single-record report parses as a plain object, not an array.
-  isArray: (name) => name === 'record',
+  // Always produce arrays for <record> and for <dkim> inside <auth_results>
+  // (some providers include multiple DKIM signatures per record).
+  isArray: (name: string, jpath: string) =>
+    name === 'record' ||
+    (name === 'dkim' && jpath.includes('auth_results')),
 })
 
 /**
@@ -65,13 +81,20 @@ export function parseAggregate(attachment: Attachment): ParsedAggregateReport {
   if (!fb.policy_published) throw new Error('Malformed DMARC report: missing <policy_published>')
 
   const meta = fb.report_metadata
-  const policy = fb.policy_published
+  const policy = fb.policy_published as Record<string, unknown>
 
   const reportId = String(meta?.report_id ?? '')
   const orgName = String(meta?.org_name ?? '')
   const domain = String(policy?.domain ?? '')
   const dateBegin = new Date(Number(meta?.date_range?.begin ?? 0) * 1000)
   const dateEnd = new Date(Number(meta?.date_range?.end ?? 0) * 1000)
+
+  // policy_published fields
+  const policyP = policy?.p != null ? String(policy.p) : null
+  const policySp = policy?.sp != null ? String(policy.sp) : null
+  const policyAdkim = policy?.adkim != null ? String(policy.adkim) : null
+  const policyAspf = policy?.aspf != null ? String(policy.aspf) : null
+  const policyPct = policy?.pct != null ? Number(policy.pct) : null
 
   // fb.record is always an array due to isArray config, but guard anyway
   const rawRecords: unknown[] = Array.isArray(fb.record) ? fb.record : fb.record ? [fb.record] : []
@@ -81,6 +104,21 @@ export function parseAggregate(attachment: Attachment): ParsedAggregateReport {
     const row = rec.row as Record<string, unknown>
     const evaluated = row?.policy_evaluated as Record<string, unknown> | undefined
     const identifiers = rec.identifiers as Record<string, unknown> | undefined
+    const authResults = rec.auth_results as Record<string, unknown> | undefined
+
+    // SPF auth result — single element
+    const spfAuth = authResults?.spf as Record<string, unknown> | undefined
+    const spfAuthDomain = spfAuth?.domain != null ? String(spfAuth.domain) : null
+    const spfAuthResult = spfAuth?.result != null ? String(spfAuth.result) : null
+
+    // DKIM auth results — always an array (isArray config), pick best result:
+    // first 'pass' entry wins; fall back to first entry if none pass.
+    const dkimEntries = (authResults?.dkim as Array<Record<string, unknown>> | undefined) ?? []
+    const bestDkim =
+      dkimEntries.find(d => String(d.result) === 'pass') ?? dkimEntries[0] ?? null
+    const dkimAuthDomain = bestDkim?.domain != null ? String(bestDkim.domain) : null
+    const dkimAuthSelector = bestDkim?.selector != null ? String(bestDkim.selector) : null
+    const dkimAuthResult = bestDkim?.result != null ? String(bestDkim.result) : null
 
     return {
       sourceIp: String(row?.source_ip ?? ''),
@@ -89,8 +127,26 @@ export function parseAggregate(attachment: Attachment): ParsedAggregateReport {
       dkim: String(evaluated?.dkim ?? ''),
       spf: String(evaluated?.spf ?? ''),
       headerFrom: String(identifiers?.header_from ?? ''),
+      spfAuthDomain,
+      spfAuthResult,
+      dkimAuthDomain,
+      dkimAuthSelector,
+      dkimAuthResult,
     }
   })
 
-  return { reportId, orgName, domain, dateBegin, dateEnd, records }
+  return {
+    reportId,
+    orgName,
+    domain,
+    dateBegin,
+    dateEnd,
+    records,
+    xmlString,
+    policyP,
+    policySp,
+    policyAdkim,
+    policyAspf,
+    policyPct,
+  }
 }

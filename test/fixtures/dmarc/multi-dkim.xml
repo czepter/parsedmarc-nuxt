@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<feedback>
+  <report_metadata>
+    <org_name>Test Org</org_name>
+    <email>dmarc@test.example</email>
+    <report_id>multi-dkim-test-001</report_id>
+    <date_range>
+      <begin>1704067200</begin>
+      <end>1704153600</end>
+    </date_range>
+  </report_metadata>
+  <policy_published>
+    <domain>example.com</domain>
+    <adkim>r</adkim>
+    <aspf>r</aspf>
+    <p>quarantine</p>
+    <sp>none</sp>
+    <pct>75</pct>
+  </policy_published>
+  <record>
+    <row>
+      <source_ip>1.2.3.4</source_ip>
+      <count>5</count>
+      <policy_evaluated>
+        <disposition>none</disposition>
+        <dkim>pass</dkim>
+        <spf>fail</spf>
+      </policy_evaluated>
+    </row>
+    <identifiers>
+      <header_from>example.com</header_from>
+    </identifiers>
+    <auth_results>
+      <dkim>
+        <domain>attacker.com</domain>
+        <selector>bad</selector>
+        <result>fail</result>
+      </dkim>
+      <dkim>
+        <domain>example.com</domain>
+        <selector>main</selector>
+        <result>pass</result>
+      </dkim>
+      <spf>
+        <domain>sendgrid.net</domain>
+        <result>pass</result>
+      </spf>
+    </auth_results>
+  </record>
+</feedback>
