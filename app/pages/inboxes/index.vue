@@ -2,24 +2,24 @@
 definePageMeta({ layout: 'default' })
 const { data: inboxes, refresh, status, error } = await useFetch('/api/inboxes')
 
-const scanningIds = ref(new Set<string>())
 const deletingId = ref<string | null>(null)
 
-async function scanNow(id: string) {
-  if (scanningIds.value.has(id)) return
-  scanningIds.value.add(id)
-  try {
-    await $fetch(`/api/inboxes/${id}/scan`, { method: 'POST' })
-    await refresh()
-  }
-  catch (e: unknown) {
-    alert(`Scan failed: ${(e as { statusMessage?: string }).statusMessage ?? 'Unknown error'}`)
-  }
-  finally {
-    scanningIds.value.delete(id)
-  }
+// ── Scan log drawer ──────────────────────────────────────────────────────────
+const drawerOpen = ref(false)
+const drawerInboxId = ref('')
+const drawerInboxLabel = ref('')
+
+function openScanDrawer(id: string, label: string) {
+  drawerInboxId.value = id
+  drawerInboxLabel.value = label
+  drawerOpen.value = true
 }
 
+function onScanDone() {
+  refresh()
+}
+
+// ── Delete ───────────────────────────────────────────────────────────────────
 async function deleteInbox(id: string, label: string) {
   if (!confirm(`Delete inbox "${label}"? This removes all its reports and scan history.`)) return
   deletingId.value = id
@@ -84,10 +84,9 @@ async function deleteInbox(id: string, label: string) {
             <Button
               variant="outline"
               size="sm"
-              :disabled="scanningIds.has(inbox.id)"
-              @click="scanNow(inbox.id)"
+              @click="openScanDrawer(inbox.id, inbox.label)"
             >
-              {{ scanningIds.has(inbox.id) ? 'Scanning…' : 'Scan Now' }}
+              Scan Now
             </Button>
             <Button
               variant="destructive"
@@ -102,4 +101,15 @@ async function deleteInbox(id: string, label: string) {
       </TableBody>
     </Table>
   </div>
+
+  <!-- ClientOnly: EventSource and Teleport are browser-only -->
+  <ClientOnly>
+    <ScanLogDrawer
+      :open="drawerOpen"
+      :inbox-id="drawerInboxId"
+      :inbox-label="drawerInboxLabel"
+      @close="drawerOpen = false"
+      @done="onScanDone"
+    />
+  </ClientOnly>
 </template>
