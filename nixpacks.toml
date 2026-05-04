@@ -1,0 +1,62 @@
+providers = ["node"]
+
+[variables]
+NIXPACKS_NODE_VERSION = '24'
+# Must be false so pnpm installs devDependencies during build
+# (nuxt, vue-tsc, @tailwindcss/vite, etc. are all devDeps even with prisma moved out).
+NPM_CONFIG_PRODUCTION = 'false'
+# Use a consistent pnpm store location for caching.
+PNPM_HOME = '/root/.local/share/pnpm'
+# Note: no PRISMA_CLI_BINARY_TARGETS — Prisma 7 uses @prisma/adapter-better-sqlite3
+# (a driver adapter) instead of a native query-engine binary, so binaryTargets
+# are irrelevant and setting them breaks `prisma generate`.
+
+# Raise Node's heap ceiling for `nuxt build`. Local builds peak at ~2.1 GB RSS
+# (Vite client + Vite server + Nitro graphs all live in memory simultaneously,
+# plus vue-tsc). Node's default --max-old-space-size on 64-bit is ~1.7 GB, so
+# the build hit the ceiling on Coolify and was OOM-killed silently (exit 255,
+# no stderr — classic SIGKILL signature). 4096 leaves comfortable headroom
+# without bloating runtime memory: this only affects `node` invocations during
+# the build phase, not the running app (start.sh has its own process).
+# If your Coolify VPS has < ~4 GB total, you also need to raise the host RAM
+# or add swap — bumping NODE_OPTIONS alone won't beat a cgroup memory limit.
+NODE_OPTIONS = '--max-old-space-size=4096'
+
+[phases.setup]
+nixpkgsArchive = '11cb3517b3af6af300dd6c055aeda73c9bf52c48'
+nixPkgs = ['nodejs_24']
+
+[phases.install]
+cmds = [
+  "corepack enable",
+  # Match the local pnpm version; bump alongside any local pnpm upgrade
+  # + lockfile regeneration so --frozen-lockfile doesn't break.
+  "corepack prepare pnpm@10.28.2 --activate",
+  "pnpm config set store-dir /root/.local/share/pnpm/store",
+  "pnpm install --frozen-lockfile --prefer-offline"
+]
+# Cache pnpm store — avoids re-downloading packages on every build
+cacheDirectories = ["/root/.local/share/pnpm/store"]
+
+# NODE_OPTIONS is inlined here rather than relying on [variables] propagation.
+# Coolify passes nixpacks [variables] as `--build-arg VAR` (no value), so Docker
+# reads from the shell env sourced from build-time.env — but Coolify only writes
+# its own UI-configured env vars into that file, not nixpacks.toml [variables].
+# Result: NODE_OPTIONS ends up empty and Node is OOM-killed silently (exit 255)
+# during the Nitro Rollup pass (~2 min after the Vite client build succeeds).
+# Hardcoding it inline guarantees the heap flag is always active at build time.
+[phases.build]
+cmds = [
+  # Redundant with `postinstall` (which already runs prisma generate),
+  # but kept here so failures surface with a dedicated build-phase log line
+  # and so this step survives if postinstall is ever refactored.
+  "pnpm prisma generate",
+  "NODE_OPTIONS='--max-old-space-size=4096' pnpm build"
+]
+# Note: do NOT cache .nuxt — it's build OUTPUT, not a cache.
+# A BuildKit cache mount on .nuxt overlays/hides the tsconfig.json
+# that `nuxt prepare` writes during postinstall, causing Vite to fail
+# with "Cannot find module './.nuxt/tsconfig.json'".
+
+[start]
+cmd = "sh start.sh"
