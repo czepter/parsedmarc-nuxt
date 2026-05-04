@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # Non-secret CI value — app requires this env var to be non-empty.
+      # Real production deploys must use a random 32+ char string from secrets.
+      NUXT_SESSION_PASSWORD: ci-test-session-password-not-a-real-secret
+      # Isolated test database file in the workspace.
+      DATABASE_URL: file:./data/ci-test.db
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        # Must run BEFORE setup-node so that setup-node's `cache: pnpm`
+        # finds pnpm on PATH for store-dir resolution.
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          # Caches the pnpm store at ~/.local/share/pnpm/store keyed by lockfile.
+          # First run: ~30s install. Cached run: ~5s install.
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        # postinstall runs `nuxt prepare && prisma generate` here, generating
+        # the prisma client into app/generated/prisma/.
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations to CI database
+        # Creates ./data/ci-test.db with the current schema. Required for the
+        # nuxt vitest project and the e2e tests that hit the DB.
+        run: pnpm prisma migrate deploy
+
+      - name: Run vitest (unit + nuxt projects)
+        # 4 GB heap matches the build-time setting; the nuxt vitest project
+        # spins up a partial Nuxt runtime which is memory-hungry.
+        run: pnpm test
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - name: Resolve Playwright version
+        id: playwright-version
+        # Use the LOCKED version from pnpm-lock so the cache key is deterministic
+        # across machines (pnpm playwright --version would print the runtime
+        # version which can drift from the lockfile during partial upgrades).
+        run: |
+          version=$(node -p "require('./node_modules/playwright-core/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        # When cache hits, skip the ~150 MB browser download but still install
+        # OS packages (--with-deps writes apt packages that aren't cached).
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm playwright install --with-deps chromium
+
+      - name: Install Playwright system deps only (cache hit)
+        # Browsers are cached but apt-installed libs like libnss3 aren't.
+        # `install-deps` is fast (just an apt-get install) and idempotent.
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm playwright install-deps chromium
+
+      - name: Run Playwright e2e tests
+        # playwright.config.ts spins up `pnpm dev` on PORT=3001 internally
+        # via webServer config. CI=true triggers retries=2 and workers=1.
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        # always() ensures the report is uploaded even when tests fail —
+        # which is exactly when you need it for debugging.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
