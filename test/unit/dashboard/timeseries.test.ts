@@ -11,9 +11,9 @@ function pickGranularity(windowSeconds: number): Granularity {
 function bucketToUnix(b: string, granularity: Granularity): number {
   if (granularity === 'week') {
     const [year, week] = b.split('-').map(Number)
-    const jan4 = new Date(year, 0, 4)
+    const jan4 = new Date(Date.UTC(year, 0, 4))
     const weekStart = new Date(jan4)
-    weekStart.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (week - 1) * 7)
+    weekStart.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7) + (week - 1) * 7)
     return Math.floor(weekStart.getTime() / 1000)
   }
   return Math.floor(new Date(b + 'Z').getTime() / 1000)
@@ -54,6 +54,6 @@ describe('bucketToUnix', () => {
 
   it('parses week bucket — week 1 of 2024', () => {
     const ts = bucketToUnix('2024-01', 'week')
-    expect(ts).toBe(1704063600)
+    expect(ts).toBe(new Date('2024-01-01T00:00:00Z').getTime() / 1000)
   })
 })

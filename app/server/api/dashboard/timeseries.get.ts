@@ -80,9 +80,9 @@ export default defineEventHandler(async (event): Promise<TimeseriesResponse> => 
   function bucketToUnix(b: string): number {
     if (granularity === 'week') {
       const [year, week] = b.split('-').map(Number)
-      const jan4 = new Date(year, 0, 4)
+      const jan4 = new Date(Date.UTC(year, 0, 4))
       const weekStart = new Date(jan4)
-      weekStart.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (week - 1) * 7)
+      weekStart.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7) + (week - 1) * 7)
       return Math.floor(weekStart.getTime() / 1000)
     }
     return Math.floor(new Date(b + 'Z').getTime() / 1000)
