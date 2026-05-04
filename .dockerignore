@@ -1,0 +1,42 @@
+# Version control / CI
+.git
+.gitignore
+.github
+.worktrees
+
+# Dependencies (re-installed in image)
+node_modules
+
+# Nuxt / Nitro build outputs (built inside image)
+.output
+.nuxt
+.nitro
+.cache
+.data
+dist
+
+# Prisma generated client (regenerated inside image)
+app/generated
+
+# Runtime data — must be a volume, never baked into the image
+data
+
+# Local env files — secrets must come from runtime env
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+coverage
+playwright-report
+test-results
+
+# Editor / OS noise
+.DS_Store
+.fleet
+.idea
+*.log
+logs
+
+# Local plan/notes folders not needed in image
+.claude

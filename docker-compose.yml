@@ -1,0 +1,22 @@
+services:
+  parsedmarc-nuxt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: parsedmarc-nuxt
+    ports:
+      - "3000:3000"
+    environment:
+      # Required: random 32+ char string, used for encrypting inbox credentials.
+      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:?NUXT_SESSION_PASSWORD must be set}
+      # Optional: GeoIP enrichment. App runs without these but logs a warning.
+      NUXT_MAXMIND_ACCOUNT_ID: ${NUXT_MAXMIND_ACCOUNT_ID:-}
+      NUXT_MAXMIND_LICENSE_KEY: ${NUXT_MAXMIND_LICENSE_KEY:-}
+      # Optional: defaults to file:./data/parsedmarc.db inside the container.
+      DATABASE_URL: ${DATABASE_URL:-file:./data/parsedmarc.db}
+    volumes:
+      - parsedmarc_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  parsedmarc_data:
