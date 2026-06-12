@@ -17,7 +17,7 @@ export DATABASE_URL="${DATABASE_URL:-file:./data/parsedmarc.db}"
 # volume that doesn't exist during the image build. `migrate deploy` is
 # idempotent and safe to run on every container start.
 echo "[start] Running prisma migrate deploy..."
-pnpm prisma migrate deploy
+./node_modules/.bin/prisma migrate deploy
 
 # exec replaces the shell with Node so SIGTERM/SIGINT propagate directly
 # (graceful shutdown of in-process cron jobs and IMAP connections).

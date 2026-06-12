@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "packages": {
+    "node": "24"
+  },
+  "steps": {
+    "build": {
+      "commands": [
+        "pnpm prisma generate",
+        "NODE_OPTIONS='--max-old-space-size=4096' pnpm build"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "sh start.sh",
+    "variables": {
+      "HOST": "0.0.0.0",
+      "NODE_ENV": "production"
+    },
+    "aptPackages": [
+      "ca-certificates",
+      "libssl3"
+    ]
+  }
+}
