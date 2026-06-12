@@ -19,7 +19,7 @@ interface StatsResponse {
   window: { from: number; to: number }
 }
 interface TimeseriesResponse {
-  granularity: string
+  granularity: 'hour' | 'day' | 'week' | 'month'
   timestamps: number[]
   none: number[]
   quarantine: number[]
@@ -241,6 +241,7 @@ function fmtPercent(n: number): string {
               :none="timeseries.none"
               :quarantine="timeseries.quarantine"
               :reject="timeseries.reject"
+              :granularity="timeseries.granularity"
               :height="300"
             />
             <Skeleton v-else-if="timeseriesStatus === 'pending'" class="h-[300px] w-full rounded-md" />
