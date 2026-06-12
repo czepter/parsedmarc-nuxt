@@ -17,7 +17,8 @@ export default defineEventHandler((event) => {
     setResponseHeader(event, 'Retry-After', String(result.retryAfterSeconds))
     throw createError({
       statusCode: 429,
-      statusMessage: `Too many attempts. Try again in ${Math.ceil(result.retryAfterSeconds / 60)} minute(s).`,
+      statusMessage: 'Too Many Requests',
+      message: `Too many attempts. Try again in ${Math.ceil(result.retryAfterSeconds / 60)} minute(s).`,
     })
   }
 })

@@ -23,8 +23,8 @@ async function submit() {
     await navigateTo('/')
   }
   catch (e: unknown) {
-    const err = e as { data?: { statusMessage?: string } }
-    error.value = err.data?.statusMessage ?? 'Something went wrong'
+    const err = e as { data?: { message?: string; statusMessage?: string } }
+    error.value = err.data?.message ?? err.data?.statusMessage ?? 'Something went wrong'
   }
   finally {
     loading.value = false

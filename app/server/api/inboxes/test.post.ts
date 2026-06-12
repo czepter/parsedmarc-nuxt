@@ -41,7 +41,8 @@ export default defineEventHandler(async (event) => {
   catch (err) {
     throw createError({
       statusCode: 422,
-      statusMessage: `Connection test failed: ${imapErrorMessage(err)}\n\nIMAP log:\n${logs.join('\n')}`,
+      statusMessage: 'Connection test failed',
+      message: `Connection test failed: ${imapErrorMessage(err)}\n\nIMAP log:\n${logs.join('\n')}`,
     })
   }
 

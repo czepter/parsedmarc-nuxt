@@ -43,8 +43,8 @@ async function testConnection() {
     testStatus.value = 'success'
   }
   catch (e: unknown) {
-    const err = e as { data?: { statusMessage?: string } }
-    testError.value = err.data?.statusMessage ?? 'Connection test failed'
+    const err = e as { data?: { message?: string; statusMessage?: string } }
+    testError.value = err.data?.message ?? err.data?.statusMessage ?? 'Connection test failed'
     testStatus.value = 'error'
   }
 }
@@ -66,8 +66,8 @@ async function submit() {
     await navigateTo('/inboxes')
   }
   catch (e: unknown) {
-    const err = e as { data?: { statusMessage?: string } }
-    error.value = err.data?.statusMessage ?? 'Failed to create inbox'
+    const err = e as { data?: { message?: string; statusMessage?: string } }
+    error.value = err.data?.message ?? err.data?.statusMessage ?? 'Failed to create inbox'
   }
   finally {
     loading.value = false

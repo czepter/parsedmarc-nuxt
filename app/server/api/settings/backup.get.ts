@@ -16,7 +16,8 @@ export default defineEventHandler(async (event): Promise<Buffer> => {
   catch (err) {
     throw createError({
       statusCode: 500,
-      statusMessage: `Backup failed: ${(err as Error).message}`,
+      statusMessage: 'Backup failed',
+      message: `Backup failed: ${(err as Error).message}`,
     })
   }
 

@@ -32,7 +32,8 @@ async function deleteInbox(id: string, label: string) {
     await refresh()
   }
   catch (e: unknown) {
-    alert(`Delete failed: ${(e as { statusMessage?: string }).statusMessage ?? 'Unknown error'}`)
+    const err = e as { data?: { message?: string; statusMessage?: string }; message?: string; statusMessage?: string }
+    alert(`Delete failed: ${err.data?.message ?? err.data?.statusMessage ?? err.message ?? err.statusMessage ?? 'Unknown error'}`)
   }
   finally {
     deletingId.value = null

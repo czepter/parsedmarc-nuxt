@@ -24,9 +24,9 @@ async function submit() {
     await navigateTo('/')
   }
   catch (e: unknown) {
-    const err = e as { statusCode?: number; data?: { statusMessage?: string } }
+    const err = e as { statusCode?: number; data?: { message?: string; statusMessage?: string } }
     if (err.statusCode === 429) {
-      error.value = err.data?.statusMessage ?? 'Too many attempts'
+      error.value = err.data?.message ?? err.data?.statusMessage ?? 'Too many attempts'
     }
     else {
       error.value = 'Invalid email or password'

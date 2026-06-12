@@ -49,8 +49,8 @@ async function changePassword() {
     pwForm.confirmPassword = ''
   }
   catch (err: unknown) {
-    const e = err as { data?: { statusMessage?: string }; message?: string }
-    pwError.value = e?.data?.statusMessage ?? e?.message ?? 'Password change failed'
+    const e = err as { data?: { message?: string; statusMessage?: string }; message?: string }
+    pwError.value = e?.data?.message ?? e?.data?.statusMessage ?? e?.message ?? 'Password change failed'
   }
   finally {
     pwLoading.value = false
