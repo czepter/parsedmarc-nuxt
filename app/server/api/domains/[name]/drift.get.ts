@@ -1,6 +1,6 @@
 import prisma from '~~/lib/prisma'
 import { detectDrift, type DriftReport } from '../../../utils/drift'
-import { findInheritedDmarc, isDmarcMissing } from '../../../utils/dns-lookup'
+import { getEmailAuth } from '../../../utils/dns-lookup'
 
 const WINDOW_DAYS = 30
 
@@ -18,9 +18,8 @@ const WINDOW_DAYS = 30
  *     AggregateRecord.headerFrom — use headerFrom-keyed aggregates and treat
  *     latestReportPolicy as null (subdomain doesn't own a DMARC policy).
  *
- * Inheritance read is cache-only here (noop refreshFn) so the endpoint stays
- * fast and never triggers live DNS — the daily cron and getEmailAuth handle
- * cache population.
+ * Uses the same cache-first DNS path as the email-auth card so stale cache
+ * entries are refreshed consistently before classification.
  */
 export default defineEventHandler(async (event): Promise<DriftReport> => {
   const { name } = getRouterParams(event)
@@ -57,11 +56,8 @@ export default defineEventHandler(async (event): Promise<DriftReport> => {
 
   const fromIso = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString()
 
-  const [dnsLookup, latestReport, dispositionRows] = await Promise.all([
-    prisma.dmarcLookup.findUnique({
-      where: { domain: domainName },
-      select: { record: true, policy: true, error: true },
-    }),
+  const [emailAuth, latestReport, dispositionRows] = await Promise.all([
+    getEmailAuth(domainName),
     mode === 'domain'
       ? prisma.aggregateReport.findFirst({
           where: { domainId: domain!.id },
@@ -97,13 +93,12 @@ export default defineEventHandler(async (event): Promise<DriftReport> => {
     dispositionCounts[row.disposition] = Number(row.total)
   }
 
-  // Inheritance: for Domain rows, only consult when cache says NORECORD/error.
-  // For headerFrom-only, walk unconditionally — surfacing the parent's policy
-  // is the whole point.
-  const cacheOnlyRefresh = async () => {}
-  const shouldInherit = mode === 'headerFromOnly' || isDmarcMissing(dnsLookup)
-  const inherited = shouldInherit
-    ? await findInheritedDmarc(domainName, cacheOnlyRefresh)
+  const dnsLookup = emailAuth.dmarc
+    ? {
+        record: emailAuth.dmarc.record,
+        policy: emailAuth.dmarc.policy,
+        error: emailAuth.dmarc.error,
+      }
     : null
 
   return detectDrift({
@@ -111,6 +106,6 @@ export default defineEventHandler(async (event): Promise<DriftReport> => {
     latestReportPolicy: latestReport?.policyP ?? null,
     dispositionCounts,
     windowDays: WINDOW_DAYS,
-    inheritedPolicy: inherited?.policy ?? null,
+    inheritedPolicy: emailAuth.inheritedDmarc?.lookup.policy ?? null,
   })
 })
